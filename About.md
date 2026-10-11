@@ -1,12 +1,11 @@
-# Foam Clutch, explained plainly
+# Foam Clutch, in plain English
 
 ## The short version
 
-Foam Clutch is a small operations layer around OpenFOAM and Slurm.
+Foam Clutch is a small operations layer for OpenFOAM and Slurm.
 
-OpenFOAM performs the simulation. Slurm decides when and where the simulation
-runs. Foam Clutch sits between them and makes the workflow safer and easier to
-repeat:
+OpenFOAM runs the simulation. Slurm decides when and where it runs. Foam Clutch
+sits between them and makes the workflow safer and easier to repeat:
 
 ```text
 case + manifest
@@ -30,11 +29,11 @@ submit it to Slurm
 checkpoint, requeue, and watch the result
 ```
 
-The project is deliberately not trying to replace OpenFOAM, Slurm, ParaView,
-Prometheus, or a cluster administrator. It connects those pieces and gives
-them a consistent workflow.
+Foam Clutch is not trying to replace OpenFOAM, Slurm, ParaView, Prometheus, or
+your cluster administrator. It connects those pieces and gives them a
+consistent workflow.
 
-## Why this project exists
+## Why it exists
 
 Large simulations fail in expensive ways:
 
@@ -47,14 +46,15 @@ Large simulations fail in expensive ways:
 - many processor directories overload a parallel filesystem;
 - performance problems remain invisible until a long production run.
 
-Foam Clutch addresses the first group of problems now. The repository also
-documents the larger performance and operations roadmap for OpenFOAM workloads.
+Foam Clutch addresses the first group of problems today. The rest of this
+document describes the operational work that a production deployment may still
+need.
 
-## How the implemented workflow behaves
+## How the workflow behaves
 
-### 1. The manifest is the contract
+### 1. The manifest describes the job
 
-The manifest says what should run:
+The manifest is the job description. It says:
 
 - which case to use;
 - which solver to execute;
@@ -62,9 +62,9 @@ The manifest says what should run:
 - which Slurm partition and account to use;
 - where the cache and run directories belong.
 
-Unknown YAML fields are rejected. Relative paths are resolved relative to the
-manifest, not relative to whatever directory happens to launch the command.
-This makes automation less surprising.
+Unknown YAML fields are rejected. Relative paths are resolved from the
+manifest's directory, not from whichever directory launched the command. That
+makes scripts and automation much less surprising.
 
 The current schema is intentionally small:
 
@@ -84,10 +84,10 @@ solver:
 The schema will need versioning as features such as preprocessing, post-
 processing, container selection, and output retention become first-class.
 
-### 2. Preflight is a cheap rejection step
+### 2. Preflight catches problems early
 
-Before submission, Foam Clutch checks that the case looks like an OpenFOAM
-case. It expects:
+Before submission, Foam Clutch checks that the case has the expected OpenFOAM
+layout:
 
 ```text
 0/
@@ -107,8 +107,8 @@ libs
 ```
 
 The reason is simple: an OpenFOAM dictionary is not always passive
-configuration. Some directives can execute arbitrary code. A multi-user
-service must make that behavior explicit and controlled.
+configuration. Some directives can execute arbitrary code, so a multi-user
+service needs to make that behavior explicit and controlled.
 
 Symlinks are inspected as well. A link that points outside the case is rejected
 because it can unexpectedly expose or modify unrelated data.
@@ -118,7 +118,7 @@ The current implementation records tool failures as preflight findings. A
 future version should parse their output into structured mesh-quality fields and
 policy thresholds.
 
-### 3. The cache saves repeated work
+### 3. The cache avoids repeated work
 
 Foam Clutch calculates a SHA-256 digest from:
 
@@ -145,7 +145,7 @@ That separation matters. The checkpoint handler edits `system/controlDict` and
 the solver writes logs and time directories. A shared cache must remain a stable
 input artifact; it should not become a mutable run directory.
 
-### 4. SQLite records the local truth
+### 4. SQLite keeps local job state
 
 The current store uses SQLite with WAL mode. It records:
 
@@ -167,7 +167,7 @@ It is not yet a complete distributed state machine. For multiple replicas,
 the project should move to Postgres, add ownership/leases, and use an outbox
 for events that must survive crashes.
 
-### 5. Slurm is accessed through an adapter
+### 5. Slurm is accessed through a small adapter
 
 The scheduler interface is intentionally small:
 
@@ -211,9 +211,9 @@ scontrol requeue "$SLURM_JOB_ID"
 
 The next attempt changes `startFrom` to `latestTime`.
 
-This is not magic checkpointing. It depends on OpenFOAM honoring runtime
-dictionary changes, writing a valid time directory, and the cluster allowing
-requeue. The solver and control dictionary must be configured appropriately.
+This is cooperative checkpointing, not magic. OpenFOAM must honor runtime
+dictionary changes, write a valid time directory, and run on a cluster that
+allows requeue. The solver and `controlDict` need to be configured accordingly.
 
 ### 7. Supervision translates cluster state
 
@@ -233,7 +233,7 @@ production supervisor should also reconcile jobs after restart, handle
 accounting records for jobs that have left `slurmctld`, and distinguish a
 checkpoint requeue from a failed requeue.
 
-### 8. Telemetry is intentionally small today
+### 8. Telemetry is small for now
 
 The metrics endpoint emits Prometheus text counters for:
 
@@ -245,10 +245,10 @@ The metrics endpoint emits Prometheus text counters for:
 
 The architecture described in `ARCHITECTURE.md` goes further: parse solver logs,
 publish residuals and time-per-step, detect stalls and NaNs, and connect
-Prometheus to Grafana. Those are the next operational layers, not silently
-claimed features of the current implementation.
+Prometheus to Grafana. Those are future operational layers, not features the current implementation
+silently claims to provide.
 
-## What belongs in production
+## What production still needs
 
 A production deployment should add the following around the current core:
 
@@ -295,7 +295,7 @@ A production deployment should add the following around the current core:
 - staging-cluster integration tests;
 - strong and weak scaling benchmarks.
 
-## Performance direction
+## Where performance work can go next
 
 The design notes in `ARCHITECTURE.md` target HPC behavior that is easy to overlook:
 
@@ -315,7 +315,7 @@ machine and solver metadata, measure time per simulated second, and select a
 configuration from observed strong-scaling efficiency rather than a universal
 rule.
 
-## How to read the repository
+## Where to start in the repository
 
 Start with `README.md` when you want to run the project.
 
@@ -338,8 +338,7 @@ Read `ARCHITECTURE.md` for the broader system architecture and HPC performance p
 
 ## Honest status
 
-The repository is a useful, tested control-plane foundation. It is not yet a
-finished multi-tenant platform, and it should not be exposed as an
-unauthenticated submission API. The local workflow is real; the production
-hardening items above are the work required to operate it responsibly on a
-shared cluster.
+The repository is a useful, tested control-plane foundation. It is not a
+finished multi-tenant platform and should not be exposed as an unauthenticated
+submission API. The local workflow is real; the hardening items above are what
+you still need to operate it responsibly on a shared cluster.

@@ -1,18 +1,19 @@
 # Foam Clutch
 
-Foam Clutch is a small Go control plane for running OpenFOAM cases on a Slurm
-cluster. It validates a case before submitting it, stores a reproducible copy
-in a content-addressed cache, creates an isolated run directory, persists job
-state in SQLite, submits through `slurmrestd`, exposes Prometheus metrics, and
-can watch the Slurm job until it finishes.
+Run OpenFOAM cases on Slurm without repeating the same setup every time.
 
-The project is intentionally practical: it provides a dependable foundation for
-HPC simulation workflows without hiding cluster-specific behavior behind a
-large framework.
+Foam Clutch is a small Go tool that sits between your OpenFOAM case and the
+Slurm scheduler. It checks the case before submitting it, keeps a reproducible
+cached copy, gives each run its own working directory, records job state in
+SQLite, and follows the job until it finishes.
 
-## What it does
+OpenFOAM still runs the simulation and Slurm still owns scheduling. Foam Clutch
+just connects the two and keeps the workflow repeatable without hiding the
+cluster details you may need to troubleshoot a run.
 
-The current workflow is:
+## How it works
+
+The workflow is simple:
 
 ```text
 manifest.yaml
@@ -39,26 +40,24 @@ OpenFOAM solver with checkpoint/requeue handling
 Slurm state supervision and Prometheus metrics
 ```
 
-## Current capabilities
+## What it does for you
 
-- Strict YAML manifests using `foam-clutch/v1alpha1`.
-- Required OpenFOAM case layout checks for `system`, `constant`, and `0`.
-- Rejection of unsafe symlinks that escape the case directory.
-- Rejection of runtime code-loading directives such as:
+- Strict YAML manifests using `foam-clutch/v1alpha1`
+- OpenFOAM case checks for `system`, `constant`, and `0`
+- Protection against symlinks that escape the case directory
+- Rejection of code-loading directives such as:
   `#codeStream`, `#calc`, `codedFixedValue`, `codedMixed`, and `libs`.
-- Optional execution of `foamDictionary` and `checkMesh`.
-- SHA-256 content-addressed case caching.
-- Cache reuse for identical case contents.
-- Isolated run directories so checkpoint edits do not mutate the cache.
-- SQLite persistence with WAL mode and a simple job state model.
-- Slurm REST submission, state lookup, and cancellation.
-- JWT token callback support in the scheduler client.
-- `USR1` checkpoint handling and `scontrol requeue`.
-- Prometheus-compatible `/metrics`.
-- Basic HTTP health and read-only job listing endpoints.
-- Unit and integration-style tests for the local workflow.
+- Optional `foamDictionary` and `checkMesh` checks
+- SHA-256 case caching with reuse for identical inputs
+- Isolated run directories, so checkpoint edits never change the cache
+- SQLite job state with WAL mode
+- Slurm REST and command-line submission, lookup, and cancellation
+- `USR1` checkpoint handling with `scontrol requeue`
+- Prometheus-compatible `/metrics`
+- Health and read-only job listing endpoints
+- Unit and integration-style tests for the local workflow
 
-## Requirements
+## Before you start
 
 - Go 1.26 or newer, installed system-wide so `go` is on the default `PATH`:
   ```bash
@@ -74,35 +73,102 @@ Slurm state supervision and Prometheus metrics
   (such as `v0.0.43`) plus a Slurm JWT for the REST backend.
 - `mpirun` (OpenMPI) and the selected OpenFOAM tools available to jobs.
 
-The repository also contains `openfoam.def` for building an Apptainer image.
-Container/MPI compatibility must be verified against the target cluster.
+The repository also includes `openfoam.def` for building an Apptainer image.
+Check container and MPI compatibility with your cluster before using it.
 
-## Install (`clutch` command)
+## Build and run from source
 
-The CLI lives in `cmd/clutch` and installs as `clutch`:
+If you are developing Foam Clutch, start in the repository checkout and run:
 
 ```bash
-go install ./cmd/clutch
+go mod download
+go test ./...
+```
+
+Build the CLI into `bin/clutch` and check that it starts:
+
+```bash
+mkdir -p bin
+CGO_ENABLED=0 go build -trimpath \
+  -ldflags "-s -w -X main.Version=$(git rev-parse --short HEAD)" \
+  -o bin/clutch ./cmd/clutch
+./bin/clutch version
+```
+
+Run a case with the binary you just built:
+
+```bash
+./bin/clutch run -manifest /path/to/manifest.yaml
+```
+
+Or start the HTTP service:
+
+```bash
+./bin/clutch serve -addr :8080 -db foam-clutch.db
+```
+
+For a one-off run without producing a binary, use `go run`:
+
+```bash
+go run ./cmd/clutch run -manifest /path/to/manifest.yaml
+```
+
+## Install and uninstall
+
+The easiest way to install the command is to use the included script. By
+default it builds `clutch` and places it in `~/.local/bin`:
+
+```bash
+./install.sh
 clutch version
 ```
 
-Ensure `$(go env GOPATH)/bin` is on `PATH`. This shell has
-`~/.local/bin` on `PATH`, so this also works:
+If `~/.local/bin` is not on your `PATH`, add it for the current shell:
 
 ```bash
-cp "$(go env GOPATH)/bin/clutch" ~/.local/bin/clutch
+export PATH="$HOME/.local/bin:$PATH"
 clutch version
 ```
 
-Without installing, the equivalent developer form is:
+To install somewhere else, choose a prefix or an exact binary directory:
+
+```bash
+./install.sh --prefix "$HOME/.local"
+./install.sh --bindir "$HOME/bin"
+```
+
+To install for all users, use the system option. It normally requires `sudo`:
+
+```bash
+sudo ./install.sh --system
+```
+
+Remove the copy installed in the default location:
+
+```bash
+./uninstall.sh
+```
+
+If you have more than one copy installed, remove copies found in the common
+locations with:
+
+```bash
+./uninstall.sh --all
+```
+
+These scripts remove only the `clutch` executable. They do not remove your
+SQLite databases, `.foam-cache` directories, or `.foam-runs` directories.
+
+If you do not want to install anything, use the source directly:
 
 ```bash
 go run ./cmd/clutch version
+go run ./cmd/clutch run -manifest /path/to/manifest.yaml
 ```
 
-All examples below use the installed `clutch` command.
+The commands in the rest of this guide assume `clutch` is on your `PATH`.
 
-## Run it
+## Run a case
 
 ```bash
 clutch it -manifest manifest.yaml
@@ -116,7 +182,7 @@ clutch it -manifest manifest.yaml
 clutch run -manifest manifest.yaml
 ```
 
-## Project layout
+## Where to look in the code
 
 ```text
 cmd/clutch/
@@ -154,14 +220,14 @@ openfoam.def
   Apptainer definition
 ```
 
-## Manifest
+## Configure a case with a manifest
 
 No solver, mesh tool, MPI launcher, or file handler is hard-coded. The same
 schema runs heavySimple (`foamRun` + `incompressibleFluid`), heavyBuoyant
 (`foamRun` + `fluid`), any stock solver (`simpleFoam`, `pimpleFoam`,
 `buoyantPimpleFoam`, ...), and any custom-compiled solver: `solver.name` is
 an arbitrary bare executable, and the batch script is rendered entirely from
-manifest fields. Scaffold one with:
+manifest fields. Create a starter manifest with:
 
 ```bash
 clutch init -o manifest.yaml -solver foamRun -case ./case
@@ -212,8 +278,8 @@ storage:
   runDir: ./.foam-runs
 ```
 
-Relative paths are resolved relative to the manifest file. The case directory
-must contain:
+Paths are resolved relative to the manifest file. The case directory must
+contain:
 
 ```text
 case/
@@ -253,7 +319,37 @@ Validation also checks the case against the manifest generically: `controlDict`
 for parallel runs, `checkpointSeconds` requires `runTimeModifiable true`, and
 `mesh.strategy` must have a mesh source.
 
-## Local validation
+### Add extra files to the OpenFOAM case
+
+Foam Clutch always stages the standard OpenFOAM inputs (`0/` or `0.orig/`,
+`constant/`, and `system/`). Other files at the top level of the case are
+ignored unless you list them in `case.include`.
+
+Use `case.include` for files or directories that your case needs, such as
+`Allrun`, `Allclean`, custom scripts, or additional configuration:
+
+```yaml
+case:
+  path: ./case
+  include:
+    - Allrun
+    - Allclean
+    - scripts
+```
+
+The entries are relative to `case.path`, but they must refer to an additional
+top-level name. For example, `scripts` includes the whole `scripts/` directory.
+The standard `0/`, `constant/`, and `system/` directories are already included
+and must not be listed again. Included files are copied into the cached case,
+included in its content hash, and available in the isolated run directory on
+the compute node.
+
+Keep generated output and runner state out of `case.include`. The tool rejects
+`.git`, `.foam-cache`, `.foam-runs`, `processor*`, logs, and SQLite database
+files. After changing an included file, submit the job again so Foam Clutch
+creates or reuses the correct cache entry.
+
+## Check your setup
 
 Format and test the project:
 
@@ -272,7 +368,7 @@ clutch validate -manifest manifest.yaml
 The command prints JSON containing the parsed manifest, preflight report, and
 an error when validation fails.
 
-## Run an OpenFOAM project with a single command
+## Run an OpenFOAM case
 
 ```bash
 clutch run -manifest /home/shared/openfoam/heavySimple/manifest.yaml
@@ -294,7 +390,7 @@ clutch run -manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml -tail
 `submit`/`watch`/`status`/`cancel` below are the same pipeline split into
 steps for scripting; `run` is just `validate + submit -watch` in one call.
 
-## Submit a job (step-by-step)
+## Submit a job step by step
 
 Pick a backend first (see Scheduler backends below). For the REST backend,
 set the Slurm connection values (`SLURM_JWT_FILE` is preferred over
@@ -348,7 +444,7 @@ clutch cancel -db foam-clutch.db -id <local-job-id>
 clutch list -db foam-clutch.db -state RUNNING
 ```
 
-## Scheduler backends
+## Choose a scheduler backend
 
 `submit`, `watch`, `status`, and `cancel` accept `-backend auto|rest|cli`
 (default `auto`).
@@ -364,7 +460,7 @@ clutch list -db foam-clutch.db -state RUNNING
   back to `cli` otherwise. Clusters without `slurmrestd` (the common case)
   work out of the box via `cli`.
 
-## Examples: heavySimple and heavyBuoyant on this cluster
+## Example cases
 
 Both cases run through the identical generic path — the only differences are
 the case directory and the physics model declared in `controlDict`
@@ -394,7 +490,7 @@ queue time. Only `0/` (or `0.orig/`), `constant/`, `system/`, plus explicit
 `case.include` tops are staged and hashed; docs, scripts, logs, and `.foam-*`
 state never affect the case hash.
 
-## Where Slurm output and error files go
+## Find logs
 
 Every clutch run writes three logs inside its isolated run directory.
 Slurm expands `%j` to the Slurm job ID, so the addresses are:
@@ -453,7 +549,7 @@ JWTs are never logged. Prefer `SLURM_JWT_FILE` over `SLURM_JWT` so the token
 is re-read on every request, and do not place long-lived credentials in shell
 history, process listings, or shared logs.
 
-## Run the service
+## Run the HTTP service
 
 Start the local HTTP service:
 
@@ -486,7 +582,7 @@ Set `FOAM_CLUTCH_API_TOKEN` to require `Authorization: Bearer <token>` on
 only. It does not expose anonymous job submission. Add authentication and
 authorization before putting it behind a shared network endpoint.
 
-## Cache and run directories
+## Understand the cache and run directories
 
 The cache is keyed by a SHA-256 hash of relative file names and file contents.
 An unchanged case reuses the same cache directory:
@@ -507,7 +603,7 @@ The run directory is a copy of the cached case. This is important because the
 checkpoint handler edits `system/controlDict`; changing the cache would make
 future jobs non-reproducible.
 
-## Checkpoint and requeue behavior
+## Checkpoint and requeue
 
 When `solver.checkpointSeconds > 0`, the generated solver script:
 
@@ -532,7 +628,7 @@ This requires (only when checkpointing is enabled):
 The standalone `solver.sbatch.tmpl` remains available for users who want to
 render or submit a batch script outside the Go service.
 
-## Security model
+## Security notes
 
 OpenFOAM dictionaries can load and compile code. A user-supplied case can
 therefore become arbitrary code execution if it is run without restrictions.
@@ -554,7 +650,7 @@ should also:
 - scan archives for path traversal before extraction;
 - review any additional OpenFOAM directives introduced by the target version.
 
-## Limitations
+## Known limitations
 
 This is a working control-plane foundation, not a complete hosted SaaS product.
 The following areas still need deployment-specific work:
@@ -591,5 +687,4 @@ room for an `sbatch`/`squeue`/`sacct` adapter or another scheduler later.
 
 ## License
 
-No license file is currently included. Add an explicit license before
-redistributing the project.
+Foam Clutch is available under the [Apache License 2.0](LICENSE).
