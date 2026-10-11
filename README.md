@@ -1,23 +1,17 @@
 <div align="center">
 
-![Sluice logo](sluice-logo.svg)
+![Sluice logo](sluice-logo.png)
 
 # Sluice
 
-Run OpenFOAM cases on HPC servers
+**Find out your case is broken before the queue does.**
 
 </div>
 
-Sluice is a small Go tool that sits between your OpenFOAM case and the
-Slurm scheduler. It checks the case before submitting it, keeps a reproducible
-cached copy, gives each run its own working directory, records job state in
-SQLite, and follows the job until it finishes.
-
-Sluice is not a scheduler; Slurm still decides when and where jobs run.
-
-OpenFOAM still runs the simulation and job scheduler still owns scheduling. Sluice
-just connects the two and keeps the workflow repeatable without hiding the
-cluster details you may need to troubleshoot a run.
+Sluice is a small Go tool that sits between OpenFOAM and Slurm. It checks a
+case before submission, caches it, gives each run its own directory, tracks the
+job in SQLite, and follows it to the end. Slurm still owns scheduling and
+OpenFOAM still runs the solver.
 
 ## How it works
 
