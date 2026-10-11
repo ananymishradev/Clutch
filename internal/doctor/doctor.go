@@ -144,20 +144,47 @@ func (c storageCheck) Run(ctx context.Context) Result {
 }
 
 func DefaultChecks(dbPath string) []Check {
+	base := filepath.Dir(dbPath)
 	return []Check{
 		commandCheck{category: "Slurm", name: "Slurm CLI", commands: []string{"sbatch", "squeue", "scontrol", "sacct", "scancel"}},
-		restCheck{},
+		restProbeCheck{},
+		jwtCheck{},
+		requeueCheck{},
 		openFOAMCheck{},
 		commandCheck{category: "MPI", name: "MPI", commands: []string{"mpirun", "srun"}},
-		storageCheck{dir: filepath.Dir(dbPath)},
+		storagePathsCheck{paths: storagePaths{
+			db: base, cache: filepath.Join(base, ".foam-cache"), run: filepath.Join(base, ".foam-runs"),
+		}},
+		diskSpaceCheck{path: base},
 	}
 }
 
-type openFOAMCheck struct{}
+func DefaultChecksFor(dbPath, cacheDir, runDir string, checkpointSeconds int, foamBashrc ...string) []Check {
+	checks := DefaultChecks(dbPath)
+	for i, check := range checks {
+		if _, ok := check.(requeueCheck); ok {
+			checks[i] = requeueCheck{checkpointSeconds: checkpointSeconds}
+		}
+		if _, ok := check.(storagePathsCheck); ok {
+			checks[i] = storagePathsCheck{paths: storagePaths{
+				db: filepath.Dir(dbPath), cache: cacheDir, run: runDir,
+			}}
+		}
+		if _, ok := check.(openFOAMCheck); ok && len(foamBashrc) > 0 {
+			checks[i] = openFOAMCheck{bashrc: foamBashrc[0]}
+		}
+	}
+	return checks
+}
+
+type openFOAMCheck struct{ bashrc string }
 
 func (openFOAMCheck) Name() string { return "OpenFOAM" }
-func (openFOAMCheck) Run(ctx context.Context) Result {
-	bashrc := strings.TrimSpace(os.Getenv("FOAM_BASHRC"))
+func (c openFOAMCheck) Run(ctx context.Context) Result {
+	bashrc := strings.TrimSpace(c.bashrc)
+	if bashrc == "" {
+		bashrc = strings.TrimSpace(os.Getenv("FOAM_BASHRC"))
+	}
 	if bashrc == "" {
 		matches, _ := filepath.Glob("/opt/openfoam*/etc/bashrc")
 		if len(matches) > 0 {

@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/ananymishradev/foam-clutch/internal/doctor"
+	"github.com/ananymishradev/foam-clutch/internal/manifest"
 	"github.com/ananymishradev/foam-clutch/internal/preflight"
 	"github.com/ananymishradev/foam-clutch/internal/service"
 	"github.com/ananymishradev/foam-clutch/internal/store"
@@ -229,7 +231,25 @@ func doctorCommand(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	checks := doctor.DefaultChecks(*dbPath)
+	cacheDir := filepath.Join(filepath.Dir(*dbPath), ".foam-cache")
+	runDir := filepath.Join(filepath.Dir(*dbPath), ".foam-runs")
+	checkpointSeconds := 0
+	foamBashrc := ""
+	if strings.TrimSpace(*manifestPath) != "" {
+		m, err := manifest.Load(*manifestPath)
+		if err == nil {
+			cacheDir, runDir = m.Storage.CacheDir, m.Storage.RunDir
+			if cacheDir == "" {
+				cacheDir = filepath.Join(filepath.Dir(*manifestPath), ".foam-cache")
+			}
+			if runDir == "" {
+				runDir = filepath.Join(filepath.Dir(*manifestPath), ".foam-runs")
+			}
+			checkpointSeconds = m.Solver.CheckpointSeconds
+			foamBashrc = m.Runtime.FoamBashrc
+		}
+	}
+	checks := doctor.DefaultChecksFor(*dbPath, cacheDir, runDir, checkpointSeconds, foamBashrc)
 	if strings.TrimSpace(*manifestPath) != "" {
 		checks = append(checks, caseDoctorCheck{manifestPath: *manifestPath})
 	}

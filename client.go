@@ -55,6 +55,44 @@ type Client struct {
 	configErr error
 }
 
+// Probe performs an authenticated GET using the client's configured HTTP or
+// Unix-socket transport. It is intentionally small so diagnostics can verify
+// connectivity without duplicating scheduler transport behavior.
+func (c *Client) Probe(ctx context.Context, path string) (int, []byte, error) {
+	if c.configErr != nil {
+		return 0, nil, c.configErr
+	}
+	target := path
+	if strings.HasPrefix(path, "/") {
+		target = strings.TrimRight(c.cfg.BaseURL, "/") + path
+	} else {
+		target = c.url(path)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return 0, nil, err
+	}
+	tok, err := c.cfg.Token(ctx)
+	if err != nil {
+		return 0, nil, fmt.Errorf("token: %w", err)
+	}
+	req.Header.Set("X-SLURM-USER-NAME", c.cfg.User)
+	req.Header.Set("X-SLURM-USER-TOKEN", tok)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20+1))
+	if err != nil {
+		return resp.StatusCode, nil, err
+	}
+	if len(body) > 1<<20 {
+		return resp.StatusCode, nil, errors.New("response exceeds 1 MiB")
+	}
+	return resp.StatusCode, body, nil
+}
+
 func New(cfg Config) *Client {
 	c, err := NewClient(cfg)
 	if err != nil {
