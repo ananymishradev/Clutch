@@ -1,6 +1,12 @@
+<div align="center">
+
+![Sluice logo](sluice-logo.svg)
+
 # Sluice
 
 Run OpenFOAM cases on HPC servers
+
+</div>
 
 Sluice is a small Go tool that sits between your OpenFOAM case and the
 Slurm scheduler. It checks the case before submitting it, keeps a reproducible
