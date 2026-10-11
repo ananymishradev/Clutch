@@ -17,6 +17,8 @@ processor*/
 /sluice
 /bin/sluice
 sluice-*
+!sluice-logo.png
+!sluice-logo.svg
 sluice.db
 /clutch
 clutch-*

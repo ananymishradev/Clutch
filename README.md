@@ -1,6 +1,6 @@
 <div align="center">
 
-![Sluice logo](sluice-logo.png)
+<img src="sluice-logo.png" alt="Sluice logo" width="600">
 
 # Sluice
 
