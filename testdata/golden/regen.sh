@@ -50,11 +50,16 @@ EOF
 normalize() {
   sed -E \
     -e 's@[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9:.]+@<TIMESTAMP>@g' \
+    -e 's@[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z@<TIMESTAMP>@g' \
     -e 's@[0-9]{2}:[0-9]{2}:[0-9]{2}@<TIMESTAMP>@g' \
     -e 's@[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}@<LOCAL_ID>@g' \
     -e 's@[0-9a-fA-F]{40,64}@<CASE_HASH>@g' \
+    -e 's@(^|[^0-9a-fA-F])[0-9a-fA-F]{8}([^0-9a-fA-F]|$)@\1<ID>\2@g' \
     -e 's@/tmp/[A-Za-z0-9._/-]+@<TEMP_PATH>@g' \
-    -e 's@([Ss]lurm( job| ID)?[=: ]+)[0-9]+@\1<SLURM_ID>@g'
+    -e 's@([Ss]lurm( job| ID)?[=: ]+)[0-9]+@\1<SLURM_ID>@g' \
+    -e 's@<TEMP_PATH><CASE_HASH>@<TEMP_PATH>/<CASE_HASH>@g' \
+    -e 's@<TEMP_PATH><LOCAL_ID>@<TEMP_PATH>/<LOCAL_ID>@g' \
+    -e 's@[[:space:]]+$@@'
 }
 run_one() {
   name=$1
@@ -68,14 +73,39 @@ run_one() {
   normalize < "$out/$name.stderr.raw" > "$out/$name.stderr"
   rm -f "$out/$name.stdout.raw" "$out/$name.stderr.raw"
 }
+run_one_state() {
+  name=$1
+  state=$2
+  shift 2
+  fake="$case_root/fake-$name"
+  mkdir -p "$fake"
+  printf '%s\n' "$state" > "$fake/state"
+  PATH="$wt/testdata/fakeslurm:$PATH" FAKESLURM_DIR="$fake" \
+    "$wt/clutch" "$@" > "$out/$name.stdout.raw" 2> "$out/$name.stderr.raw" || true
+  normalize < "$out/$name.stdout.raw" > "$out/$name.stdout"
+  normalize < "$out/$name.stderr.raw" > "$out/$name.stderr"
+  rm -f "$out/$name.stdout.raw" "$out/$name.stderr.raw"
+}
 
 run_one run-done run --manifest "$case_root/m.yaml" --db "$case_root/jobs.db" --backend cli --no-watch
 run_one run-dry-run run --manifest "$case_root/m.yaml" --db "$case_root/dry.db" --backend cli --dry-run
 run_one run-no-watch run --manifest "$case_root/m.yaml" --db "$case_root/no-watch.db" --backend cli --no-watch
+run_one_state run-failed FAILED run --manifest "$case_root/m.yaml" --db "$case_root/failed.db" --backend cli --interval 1ms
+run_one_state run-cancelled CANCELLED run --manifest "$case_root/m.yaml" --db "$case_root/cancelled.db" --backend cli --interval 1ms
 run_one validate-success validate --manifest "$case_root/m.yaml"
 run_one validate-json validate --manifest "$case_root/m.yaml" --output json
+cp "$case_dir/system/controlDict" "$case_root/controlDict.ok"
+printf '#codeStream\n' > "$case_dir/system/controlDict"
+run_one validate-preflight-failure validate --manifest "$case_root/m.yaml"
+run_one validate-preflight-failure-json validate --manifest "$case_root/m.yaml" --output json
+mv "$case_root/controlDict.ok" "$case_dir/system/controlDict"
 run_one list-empty list --db "$case_root/empty.db"
 run_one list-empty-json list --db "$case_root/empty-json.db" --output json
-run_one status status --db "$case_root/jobs.db" --id "$(sqlite3 "$case_root/jobs.db" 'select id from jobs limit 1')" 
+run_one list-populated list --db "$case_root/jobs.db"
+run_one list-populated-json list --db "$case_root/jobs.db" --output json
+run_one status status --db "$case_root/jobs.db" --id "$(sqlite3 "$case_root/jobs.db" 'select id from jobs limit 1')"
+run_one status-refresh status --db "$case_root/jobs.db" --id "$(sqlite3 "$case_root/jobs.db" 'select id from jobs limit 1')" --refresh --backend cli
+run_one status-json status --db "$case_root/jobs.db" --id "$(sqlite3 "$case_root/jobs.db" 'select id from jobs limit 1')" --output json
 run_one logs logs --db "$case_root/jobs.db" --latest --follow=false
+run_one cancel cancel --db "$case_root/jobs.db" --slurm 48213 --yes
 run_one doctor doctor --db "$case_root/jobs.db"

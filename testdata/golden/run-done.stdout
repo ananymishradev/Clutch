@@ -1,1 +1,1 @@
-{"ID":"<LOCAL_ID>","CaseHash":"<CASE_HASH>","CachePath":"<TEMP_PATH><CASE_HASH>","RunPath":"<TEMP_PATH><LOCAL_ID>","SlurmID":48213}
+{"ID":"<LOCAL_ID>","CaseHash":"<CASE_HASH>","CachePath":"<TEMP_PATH>/<CASE_HASH>","RunPath":"<TEMP_PATH>/<LOCAL_ID>","SlurmID":48213}

@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	timestampRE = regexp.MustCompile(`\b\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?\b|\b\d{2}:\d{2}:\d{2}\b`)
+	timestampRE = regexp.MustCompile(`\b\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?\b|\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\b|\b\d{2}:\d{2}:\d{2}\b`)
 	durationRE  = regexp.MustCompile(`\b\d+h?\d*m?\d*(?:\.\d+)?s\b|\b\d{2}:\d{2}:\d{2}\b`)
 	uuidRE      = regexp.MustCompile(`\b[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}\b`)
 	shortIDRE   = regexp.MustCompile(`\b[0-9a-fA-F]{8}\b`)
@@ -28,5 +28,10 @@ func Normalize(s string) string {
 	s = shortIDRE.ReplaceAllString(s, "<ID>")
 	s = strings.ReplaceAll(s, "<TEMP_PATH><CASE_HASH>", "<TEMP_PATH>/<CASE_HASH>")
 	s = strings.ReplaceAll(s, "<TEMP_PATH><LOCAL_ID>", "<TEMP_PATH>/<LOCAL_ID>")
+	lines := strings.Split(s, "\n")
+	for i := range lines {
+		lines[i] = strings.TrimRight(lines[i], " \t")
+	}
+	s = strings.Join(lines, "\n")
 	return s
 }

@@ -1,5 +1,5 @@
 # dry run: nothing was submitted
-# cache: <TEMP_PATH><CASE_HASH> (hit)
+# cache: <TEMP_PATH>/<CASE_HASH> (hit)
 # rendered batch script:
 #!/bin/bash
 #SBATCH --job-name=pty-case
@@ -11,8 +11,8 @@
 #SBATCH --hint=nomultithread
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@600
-#SBATCH --output='<TEMP_PATH><CASE_HASH>'/slurm-%j.out
-#SBATCH --error='<TEMP_PATH><CASE_HASH>'/slurm-%j.err
+#SBATCH --output='<TEMP_PATH>/<CASE_HASH>'/slurm-%j.out
+#SBATCH --error='<TEMP_PATH>/<CASE_HASH>'/slurm-%j.err
 set -euo pipefail
 echo "=== foam-clutch job: pty-case ==="
 echo "solver=simpleFoam ranks=1 wall=<TIMESTAMP> mesh=blockMesh launcher=mpirun fileHandler=collated"
@@ -29,7 +29,7 @@ BASHRC='/etc/bash.bashrc'
 foam_serial() { bash -c "source $BASHRC && $*"; }
 foam_mpi()    { mpirun -np "${NTASKS:-1}" bash -c "source $BASHRC && exec $*"; }
 
-cd '<TEMP_PATH><CASE_HASH>'
+cd '<TEMP_PATH>/<CASE_HASH>'
 pwd; ls
 
 # --- mesh (strategy from manifest) ---

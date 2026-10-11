@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -276,6 +277,7 @@ func TestPTY_RunHappyPath(t *testing.T) {
 	_, manifest, db := writeCaseManifest(t)
 	s := startPTY(t, []string{"run", "--manifest", manifest, "--db", db, "--backend", "cli", "--interval", "50ms"}, nil)
 	s.WaitFor("manifest", 15*time.Second)
+	s.WaitFor("preflight", 15*time.Second)
 	s.WaitFor("run dir", 15*time.Second)
 	s.WaitFor("submitted", 15*time.Second)
 	if err := os.WriteFile(filepath.Join(fakeDirFromOutput(t, s), "state"), []byte("COMPLETED\n"), 0o640); err != nil {
@@ -416,6 +418,41 @@ func TestPTY_NoColorFlagAndEnvironment(t *testing.T) {
 				t.Fatal("color SGR sequence found")
 			}
 		})
+	}
+}
+
+func TestPTY_ValidateJSONDoesNotStartLiveView(t *testing.T) {
+	_, manifest, _ := writeCaseManifest(t)
+	s := startPTY(t, []string{"validate", "--manifest", manifest, "--output", "json"}, nil)
+	code, _ := s.Wait(10 * time.Second)
+	if code != 0 {
+		t.Fatalf("validate exited %d; output=%q", code, s.Output())
+	}
+
+	plain := strings.TrimSpace(s.plain())
+	var value any
+	if err := json.Unmarshal([]byte(plain), &value); err != nil {
+		t.Fatalf("PTY JSON output is invalid: %v; output=%q", err, s.Output())
+	}
+	raw := s.Output()
+	if strings.Contains(raw, "\x1b[?25l") || strings.Contains(raw, "⠋") {
+		t.Fatalf("live view started for JSON output: %q", raw)
+	}
+}
+
+func TestPTY_RunJSONDoesNotStartLiveView(t *testing.T) {
+	_, manifest, db := writeCaseManifest(t)
+	s := startPTY(t, []string{"run", "--manifest", manifest, "--db", db, "--backend", "cli", "--output", "json", "--no-watch"}, nil)
+	code, _ := s.Wait(10 * time.Second)
+	if code != 0 {
+		t.Fatalf("JSON run exited %d; output=%q", code, s.Output())
+	}
+	raw := s.Output()
+	if strings.Contains(raw, "\x1b[?25l") || strings.Contains(raw, "⠋") {
+		t.Fatalf("live view started for JSON run: %q", raw)
+	}
+	if !strings.Contains(s.plain(), `"ID"`) {
+		t.Fatalf("JSON run output missing record: %q", raw)
 	}
 }
 

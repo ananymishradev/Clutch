@@ -1,0 +1,58 @@
+{
+  "manifest": {
+    "APIVersion": "foam-clutch/v1alpha1",
+    "Name": "pty-case",
+    "Case": {
+      "Path": "<TEMP_PATH>",
+      "Include": null
+    },
+    "Resources": {
+      "Partition": "",
+      "Account": "",
+      "Nodes": 1,
+      "TasksPerNode": 1,
+      "TimeLimitMinutes": 60,
+      "SbatchExtra": null
+    },
+    "Solver": {
+      "Name": "simpleFoam",
+      "Arguments": null,
+      "Container": "",
+      "FileHandler": "collated",
+      "CheckpointSeconds": 600
+    },
+    "Mesh": {
+      "Strategy": "blockMesh",
+      "Commands": null
+    },
+    "Post": {
+      "Reconstruct": false,
+      "Commands": null
+    },
+    "Runtime": {
+      "FoamBashrc": "/etc/bash.bashrc",
+      "ThreadsPerRank": 1,
+      "MPI": {
+        "Launcher": "mpirun",
+        "Flavour": "",
+        "ExtraArgs": null
+      }
+    },
+    "Storage": {
+      "CacheDir": "<TEMP_PATH>",
+      "RunDir": "<TEMP_PATH>"
+    }
+  },
+  "report": {
+    "Hash": "",
+    "Findings": [
+      {
+        "Severity": "error",
+        "Path": "system/controlDict:1",
+        "Message": "executable OpenFOAM directive #codeStream is not allowed"
+      }
+    ],
+    "Warnings": null
+  },
+  "error": "preflight failed with 1 finding(s)"
+}

@@ -103,6 +103,43 @@ func TestSubmitStagesPersistsAndBuildsCheckpointScript(t *testing.T) {
 	}
 }
 
+func TestSubmitObserverDoesNotAddSyntheticPreflightStage(t *testing.T) {
+	root := t.TempDir()
+	caseDir := filepath.Join(root, "case")
+	writeCase(t, caseDir, "application simpleFoam;\nrunTimeModifiable true;\n", "", true)
+	manifestPath := filepath.Join(root, "manifest.yaml")
+	data := []byte("apiVersion: foam-clutch/v1alpha1\nname: test\ncase:\n  path: ./case\nresources:\n  nodes: 1\n  tasksPerNode: 1\n  timeLimitMinutes: 5\nsolver:\n  name: simpleFoam\nstorage:\n  cacheDir: ./cache\n  runDir: ./runs\n")
+	if err := os.WriteFile(manifestPath, data, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	st, err := store.Open(filepath.Join(root, "jobs.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	var stages []string
+	s := Service{
+		Scheduler: &fakeScheduler{},
+		Store:     st,
+		Preflight: preflight.Runner{},
+		Observer:  stageObserverFunc(func(name string, _ StageStatus, _ string) { stages = append(stages, name) }),
+	}
+	if _, err := s.Submit(context.Background(), manifestPath); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range stages {
+		if name == "preflight" {
+			t.Fatal("Submit emitted a synthetic preflight stage")
+		}
+	}
+}
+
+type stageObserverFunc func(string, StageStatus, string)
+
+func (f stageObserverFunc) Stage(name string, status StageStatus, detail string) {
+	f(name, status, detail)
+}
+
 func contains(s, part string) bool {
 	return len(part) > 0 && len(s) >= len(part) && filepath.Base(part) != "" && strings.Contains(s, part)
 }

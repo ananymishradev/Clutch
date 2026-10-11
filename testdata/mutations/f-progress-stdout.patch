@@ -1,0 +1,14 @@
+# expected-test: TestPipe_RunNoWatchMatchesBaseline
+diff --git a/internal/ui/progress.go b/internal/ui/progress.go
+--- a/internal/ui/progress.go
++++ b/internal/ui/progress.go
+@@ -3,4 +3,5 @@ import (
+ 	"fmt"
+ 	"io"
++	"os"
+ 	"time"
+ )
+@@ -23,2 +24,2 @@ func (p Progress) Timestamped(name, detail string) {
+-	fmt.Fprintf(p.Out, "%s %s %-12s %s\n", time.Now().Format("15:04:05"), p.Symbol.OK, name, detail)
++	fmt.Fprintf(os.Stdout, "%s %s %-12s %s\n", time.Now().Format("15:04:05"), p.Symbol.OK, name, detail)
+ }

@@ -15,3 +15,10 @@ The script refuses an unset SHA and refuses to run when `BASELINE_SHA` equals
 the current `HEAD`. It creates a temporary detached worktree and uses the
 repository's POSIX fake Slurm commands. Do not regenerate these files from
 the current tree when investigating a parity regression.
+
+The scenarios cover successful, failed, cancelled, dry-run, and no-watch
+runs; successful and failing validation in table and JSON modes; empty and
+populated lists; refreshed and JSON status; path-only logs; cancel; and doctor
+output. Timestamps, runtime IDs, hashes, temporary paths, and table trailing
+whitespace are normalized. Run the generator twice with the same
+`BASELINE_SHA` after changing normalization to verify determinism.

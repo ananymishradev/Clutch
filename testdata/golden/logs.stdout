@@ -1,3 +1,3 @@
-<TEMP_PATH><LOCAL_ID>/log.solver
-<TEMP_PATH><LOCAL_ID>/slurm-48213.out
-<TEMP_PATH><LOCAL_ID>/slurm-48213.err
+<TEMP_PATH>/<LOCAL_ID>/log.solver
+<TEMP_PATH>/<LOCAL_ID>/slurm-48213.out
+<TEMP_PATH>/<LOCAL_ID>/slurm-48213.err

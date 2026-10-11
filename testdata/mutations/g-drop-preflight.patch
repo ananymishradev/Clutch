@@ -1,0 +1,12 @@
+# expected-test: TestPipe_RunPreflightFailureReportsFindings
+--- a/cmd/clutch/main.go
++++ b/cmd/clutch/main.go
+@@ -98,7 +98,7 @@
+ 	log.Printf("clutch run backend=%s manifest=%s db=%s", backendName, *manifestPath, db)
+ 	vs := service.Service{Preflight: preflight.Runner{}}
+ 	if _, _, err := vs.Validate(ctx, *manifestPath); err != nil {
+-		return err
++		return fmt.Errorf("validation failed")
+ 	}
+ 	st, err := store.Open(db)
+ 	if err != nil {

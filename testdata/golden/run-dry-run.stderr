@@ -1,2 +1,2 @@
 <TIMESTAMP> [ok] manifest     pty-case
-<TIMESTAMP> [ok] cache        <TEMP_PATH><CASE_HASH>
+<TIMESTAMP> [ok] cache        <TEMP_PATH>/<CASE_HASH>

@@ -1,0 +1,1 @@
+[{"cache_path":"<TEMP_PATH>/<CASE_HASH>","case_hash":"<CASE_HASH>","error":"","id":"<LOCAL_ID>","manifest_path":"<TEMP_PATH>","name":"pty-case","run_path":"<TEMP_PATH>/<LOCAL_ID>","slurm_id":48213,"state":"QUEUED","updated_at":"<TIMESTAMP>"}]

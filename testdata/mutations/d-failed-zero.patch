@@ -1,0 +1,9 @@
+# expected-test: TestPipeExitCodes
+diff --git a/cmd/clutch/main.go b/cmd/clutch/main.go
+--- a/cmd/clutch/main.go
++++ b/cmd/clutch/main.go
+@@ -142,3 +142,3 @@ func run(ctx context.Context, args []string) error {
+ 	if j.State == "FAILED" || j.State == "CANCELLED" {
+-		return exitError{code: exitJob, err: fmt.Errorf("job ended in %s", j.State)}
++		return exitError{code: exitOK, err: fmt.Errorf("job ended in %s", j.State)}
+ 	}

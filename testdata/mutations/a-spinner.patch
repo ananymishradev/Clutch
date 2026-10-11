@@ -1,0 +1,8 @@
+# expected-test: TestPipe_RunNoWatchMatchesBaseline
+diff --git a/cmd/clutch/main.go b/cmd/clutch/main.go
+--- a/cmd/clutch/main.go
++++ b/cmd/clutch/main.go
+@@ -106,2 +106,3 @@ func run(ctx context.Context, args []string) error {
+ 	log.Printf("clutch run backend=%s manifest=%s db=%s", backendName, *manifestPath, db)
++	fmt.Fprintln(os.Stderr, "⠋")
+ 	vs := service.Service{Preflight: preflight.Runner{}}

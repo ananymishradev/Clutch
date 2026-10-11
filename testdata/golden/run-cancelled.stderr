@@ -1,0 +1,9 @@
+<TIMESTAMP> clutch run backend=cli manifest=<TEMP_PATH> db=<TEMP_PATH>
+<TIMESTAMP> [ok] manifest     pty-case
+<TIMESTAMP> [ok] cache        <TEMP_PATH>/<CASE_HASH>
+<TIMESTAMP> [ok] run dir      <TEMP_PATH>/<LOCAL_ID>
+<TIMESTAMP> [ok] submitted    slurm job <SLURM_ID>
+<TIMESTAMP> submitted id=<LOCAL_ID> slurm=<SLURM_ID> run=<TEMP_PATH>/<LOCAL_ID>
+<TIMESTAMP> solver log: <TEMP_PATH>/<LOCAL_ID>/log.solver
+<TIMESTAMP> slurm log:  <TEMP_PATH>/<LOCAL_ID>/slurm-48213.out
+<TIMESTAMP> terminal state=CANCELLED slurm=<SLURM_ID>

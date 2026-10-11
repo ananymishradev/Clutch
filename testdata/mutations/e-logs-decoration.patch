@@ -1,0 +1,12 @@
+# expected-test: TestPipe_LogsPathsOnly
+diff --git a/cmd/clutch/logs.go b/cmd/clutch/logs.go
+--- a/cmd/clutch/logs.go
++++ b/cmd/clutch/logs.go
+@@ -70,5 +70,6 @@ func runLogs(ctx context.Context, cfg logsConfig, stdout, stderr io.Writer) error {
+ 	if !cfg.Follow {
+ 		for _, path := range paths {
+ 			fmt.Fprintln(stdout, path)
+ 		}
++		fmt.Fprintln(stdout, "logs:")
+ 		return nil
+ 	}

@@ -1,0 +1,11 @@
+# expected-test: TestPTY_DetachWithCtrlCAndQ
+diff --git a/cmd/clutch/live_run.go b/cmd/clutch/live_run.go
+--- a/cmd/clutch/live_run.go
++++ b/cmd/clutch/live_run.go
+@@ -160,4 +160,5 @@ func runLive(ctx context.Context, opts liveRunOptions) error {
+ 	}
+ 	if finalModel.Detached {
++		_ = scheduler.Cancel(context.Background(), submitResult.SlurmID)
+ 		fmt.Fprintf(os.Stderr, "job still running · local %s · slurm %d\nstatus:  clutch status --id %s --refresh\ncancel:  clutch cancel --id %s\n", submitResult.ID, submitResult.SlurmID, submitResult.ID, submitResult.ID)
+ 		return nil
+ 	}

@@ -1,0 +1,5 @@
+  local ID   <LOCAL_ID>
+  state      DONE
+  Slurm ID   <SLURM_ID>
+  updated    0s ago
+  last error

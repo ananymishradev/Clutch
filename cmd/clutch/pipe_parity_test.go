@@ -63,6 +63,9 @@ func assertPlainPipe(t *testing.T, stdout, stderr string) {
 	if strings.Contains(all, "\x1b[") || strings.Contains(all, "\r") {
 		t.Fatalf("piped output contains terminal control bytes: %q", all)
 	}
+	if strings.Contains(all, "OpenFOAM × Slurm") {
+		t.Fatal("piped output contains the interactive banner")
+	}
 	for _, frame := range []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"} {
 		if strings.Contains(all, frame) {
 			t.Fatalf("piped output contains spinner frame %q", frame)
@@ -80,6 +83,80 @@ func TestPipe_RunNoWatchMatchesBaseline(t *testing.T) {
 		t.Fatalf("stdout differs from baseline:\n got:\n%s\nwant:\n%s", got, want)
 	}
 	if got, want := testutil.Normalize(stderr), golden(t, "run-done", "stderr"); got != want {
+		t.Fatalf("stderr differs from baseline:\n got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestPipe_RunPreflightFailureReportsFindings(t *testing.T) {
+	_, manifest, db := writeCaseManifest(t)
+	if err := os.WriteFile(filepath.Join(filepath.Dir(manifest), "case", "system", "controlDict"), []byte("#codeStream\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	fake := t.TempDir()
+	if err := os.WriteFile(filepath.Join(fake, "state"), []byte("COMPLETED\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(clutchBinary, "run", "--manifest", manifest, "--db", db, "--backend", "cli")
+	cmd.Env = append(filteredEnv(), "TERM=dumb", "FAKESLURM_DIR="+fake,
+		"HOME="+t.TempDir(), "PATH="+fakeBinDir(t)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err := cmd.Run()
+	code := 0
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		code = exitErr.ExitCode()
+	} else if err != nil {
+		t.Fatal(err)
+	}
+	if code != exitUsage {
+		t.Fatalf("preflight failure exit code = %d, want %d; stderr=%q", code, exitUsage, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "preflight failed") || !strings.Contains(stderr.String(), "finding(s)") {
+		t.Fatalf("preflight findings were not reported: %q", stderr.String())
+	}
+}
+
+func TestPipe_RunTerminalScenariosMatchBaseline(t *testing.T) {
+	for _, tt := range []struct {
+		name, state string
+		code        int
+	}{
+		{"failed", "FAILED", exitJob},
+		{"cancelled", "CANCELLED", exitJob},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			stdout, stderr, code := runPipe(t, []string{"run", "--interval", "10ms"}, tt.state)
+			if code != tt.code {
+				t.Fatalf("exit code = %d, want %d", code, tt.code)
+			}
+			assertPlainPipe(t, stdout, stderr)
+			if got, want := testutil.Normalize(stdout), golden(t, "run-"+tt.name, "stdout"); got != want {
+				t.Fatalf("stdout differs from baseline:\n got:\n%s\nwant:\n%s", got, want)
+			}
+			if got, want := testutil.Normalize(stderr), golden(t, "run-"+tt.name, "stderr"); got != want {
+				const marker = "\nerror: command failed\n"
+				if !strings.Contains(got, marker) || strings.TrimSuffix(got[:strings.Index(got, marker)], "\n") != strings.TrimSuffix(want, "\n") {
+					t.Fatalf("stderr differs from baseline:\n got:\n%s\nwant:\n%s", got, want)
+				}
+			}
+		})
+	}
+}
+
+func TestPipe_ValidatePreflightGoldens(t *testing.T) {
+	_, manifest, _ := writeCaseManifest(t)
+	if err := os.WriteFile(filepath.Join(filepath.Dir(manifest), "case", "system", "controlDict"), []byte("#codeStream\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	stdout, stderr, code := runCommandPipes(t, []string{"validate", "--manifest", manifest}, nil)
+	if code != exitUsage {
+		t.Fatalf("exit code = %d, want %d", code, exitUsage)
+	}
+	assertPlainPipe(t, stdout, stderr)
+	if got, want := testutil.Normalize(stdout), golden(t, "validate-preflight-failure", "stdout"); got != want {
+		t.Fatalf("stdout differs from baseline:\n got:\n%s\nwant:\n%s", got, want)
+	}
+	if got, want := testutil.Normalize(stderr), golden(t, "validate-preflight-failure", "stderr"); got != want {
 		t.Fatalf("stderr differs from baseline:\n got:\n%s\nwant:\n%s", got, want)
 	}
 }

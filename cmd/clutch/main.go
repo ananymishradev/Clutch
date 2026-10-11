@@ -136,7 +136,13 @@ func run(ctx context.Context, args []string) error {
 		return err
 	}
 	log.Printf("terminal state=%s slurm=%d", j.State, j.SlurmID)
-	return json.NewEncoder(os.Stdout).Encode(j)
+	if err := json.NewEncoder(os.Stdout).Encode(j); err != nil {
+		return err
+	}
+	if j.State == "FAILED" || j.State == "CANCELLED" {
+		return exitError{code: exitJob, err: fmt.Errorf("job ended in %s", j.State)}
+	}
+	return nil
 }
 
 // tailRunLogs streams new lines from the solver log and the Slurm output

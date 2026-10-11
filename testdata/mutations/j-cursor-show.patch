@@ -1,0 +1,11 @@
+# expected-test: TestPTY_TerminalRestoredAndNoAltScreen
+--- a/cmd/clutch/live_run.go
++++ b/cmd/clutch/live_run.go
+@@ -140,6 +140,7 @@
+ 	if err != nil {
+ 		return err
+ 	}
++	fmt.Fprint(os.Stderr, "\x1b[?25l")
+ 	finalModel, ok := finalTeaModel.(runview.Model)
+ 	if !ok {
+ 		return fmt.Errorf("live view returned unexpected model type")

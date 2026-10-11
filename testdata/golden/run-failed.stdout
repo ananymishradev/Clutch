@@ -1,0 +1,2 @@
+{"ID":"<LOCAL_ID>","CaseHash":"<CASE_HASH>","CachePath":"<TEMP_PATH>/<CASE_HASH>","RunPath":"<TEMP_PATH>/<LOCAL_ID>","SlurmID":48213}
+{"ID":"<LOCAL_ID>","Name":"pty-case","State":"FAILED","ManifestPath":"<TEMP_PATH>","CaseHash":"<CASE_HASH>","RunPath":"<TEMP_PATH>/<LOCAL_ID>","CachePath":"<TEMP_PATH>/<CASE_HASH>","SlurmID":48213,"Error":"","UpdatedAt":"<TIMESTAMP>"}
