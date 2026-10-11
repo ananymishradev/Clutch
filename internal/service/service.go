@@ -23,6 +23,7 @@ type Service struct {
 	Store     *store.Store
 	Preflight preflight.Runner
 	Metrics   *telemetry.Metrics
+	Observer  Observer
 }
 
 type Result struct {
@@ -31,6 +32,43 @@ type Result struct {
 	CachePath string
 	RunPath   string
 	SlurmID   int
+}
+
+type Plan struct {
+	Manifest manifest.Manifest
+	Staged   stage.Result
+	Script   string
+}
+
+// Plan validates and stages a case, then renders the batch script without
+// creating a database record, run directory, or scheduler submission.
+func (s *Service) Plan(ctx context.Context, manifestPath string) (Plan, error) {
+	s.observe("manifest", StageStarted, manifestPath)
+	m, _, err := s.Validate(ctx, manifestPath)
+	if err != nil {
+		s.observe("manifest", StageFailed, err.Error())
+		return Plan{}, err
+	}
+	s.observe("manifest", StageDone, m.Name)
+	cacheDir := m.Storage.CacheDir
+	if cacheDir == "" {
+		cacheDir = filepath.Join(filepath.Dir(manifestPath), ".foam-cache")
+	}
+	stager, err := stage.New(cacheDir)
+	if err != nil {
+		return Plan{}, err
+	}
+	staged, err := stager.Stage(m.Case.Path, m.Case.Include...)
+	if err != nil {
+		s.observe("cache", StageFailed, err.Error())
+		return Plan{}, fmt.Errorf("stage case: %w", err)
+	}
+	s.observe("cache", StageDone, staged.Path)
+	script, err := checkpointScript(m, staged.Path)
+	if err != nil {
+		return Plan{}, err
+	}
+	return Plan{Manifest: m, Staged: staged, Script: script}, nil
 }
 
 func (s *Service) Validate(ctx context.Context, manifestPath string) (manifest.Manifest, preflight.Report, error) {
@@ -182,10 +220,13 @@ func (s *Service) Submit(ctx context.Context, manifestPath string) (Result, erro
 	if s.Store == nil {
 		return Result{}, fmt.Errorf("store is not configured")
 	}
+	s.observe("manifest", StageStarted, manifestPath)
 	m, _, err := s.Validate(ctx, manifestPath)
 	if err != nil {
+		s.observe("manifest", StageFailed, err.Error())
 		return Result{}, err
 	}
+	s.observe("manifest", StageDone, m.Name)
 	cacheDir := m.Storage.CacheDir
 	if cacheDir == "" {
 		cacheDir = filepath.Join(filepath.Dir(manifestPath), ".foam-cache")
@@ -196,8 +237,10 @@ func (s *Service) Submit(ctx context.Context, manifestPath string) (Result, erro
 	}
 	staged, err := stager.Stage(m.Case.Path, m.Case.Include...)
 	if err != nil {
+		s.observe("cache", StageFailed, err.Error())
 		return Result{}, fmt.Errorf("stage case: %w", err)
 	}
+	s.observe("cache", StageDone, staged.Path)
 	if s.Metrics != nil {
 		if staged.Cached {
 			s.Metrics.StageCacheHits.Add(1)
@@ -215,8 +258,10 @@ func (s *Service) Submit(ctx context.Context, manifestPath string) (Result, erro
 	}
 	runPath := filepath.Join(runDir, id)
 	if err := stager.Materialize(staged.Path, runPath); err != nil {
+		s.observe("run dir", StageFailed, err.Error())
 		return Result{}, err
 	}
+	s.observe("run dir", StageDone, runPath)
 	// Persist locations so operators can find logs without the submit stdout.
 	_ = s.Store.UpdatePaths(ctx, id, runPath, staged.Path)
 	script, err := checkpointScript(m, runPath)
@@ -242,6 +287,7 @@ func (s *Service) Submit(ctx context.Context, manifestPath string) (Result, erro
 	}
 	jobID, err := s.Scheduler.Submit(ctx, spec)
 	if err != nil {
+		s.observe("submitted", StageFailed, err.Error())
 		_ = s.Store.UpdateState(ctx, id, "FAILED", err.Error(), 0)
 		return Result{}, err
 	}
@@ -251,6 +297,7 @@ func (s *Service) Submit(ctx context.Context, manifestPath string) (Result, erro
 	if s.Metrics != nil {
 		s.Metrics.Submissions.Add(1)
 	}
+	s.observe("submitted", StageDone, fmt.Sprintf("slurm job %d", jobID))
 	return Result{ID: id, CaseHash: staged.Hash, CachePath: staged.Path, RunPath: runPath, SlurmID: jobID}, nil
 }
 

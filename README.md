@@ -98,19 +98,19 @@ CGO_ENABLED=0 go build -trimpath \
 Run a case with the binary you just built:
 
 ```bash
-./bin/clutch run -manifest /path/to/manifest.yaml
+./bin/clutch run --manifest /path/to/manifest.yaml
 ```
 
 Or start the HTTP service:
 
 ```bash
-./bin/clutch serve -addr :8080 -db foam-clutch.db
+./bin/clutch serve --addr :8080 --db foam-clutch.db
 ```
 
 For a one-off run without producing a binary, use `go run`:
 
 ```bash
-go run ./cmd/clutch run -manifest /path/to/manifest.yaml
+go run ./cmd/clutch run --manifest /path/to/manifest.yaml
 ```
 
 ## Install and uninstall
@@ -163,7 +163,7 @@ If you do not want to install anything, use the source directly:
 
 ```bash
 go run ./cmd/clutch version
-go run ./cmd/clutch run -manifest /path/to/manifest.yaml
+go run ./cmd/clutch run --manifest /path/to/manifest.yaml
 ```
 
 The commands in the rest of this guide assume `clutch` is on your `PATH`.
@@ -171,16 +171,75 @@ The commands in the rest of this guide assume `clutch` is on your `PATH`.
 ## Run a case
 
 ```bash
-clutch it -manifest manifest.yaml
+clutch run --manifest manifest.yaml
 ```
 
 `it` is a short alias for `run`. These three forms are identical:
 
 ```bash
-clutch -manifest manifest.yaml
-clutch it -manifest manifest.yaml
-clutch run -manifest manifest.yaml
+clutch --manifest manifest.yaml
+clutch it --manifest manifest.yaml
+clutch run --manifest manifest.yaml
 ```
+
+Use `--dry-run` to validate and stage a case and print the batch script without
+creating a run directory, writing a database record, or submitting anything to
+Slurm:
+
+```bash
+clutch run --manifest manifest.yaml --dry-run
+```
+
+Use `--no-watch` when you want to submit the job and return immediately:
+
+```bash
+clutch run --manifest manifest.yaml --no-watch
+```
+
+## Check the environment
+
+Run `doctor` before sending a job to the queue. It checks the Slurm and MPI
+commands and verifies that the database directory is writable:
+
+```bash
+clutch doctor
+```
+
+Use JSON output in scripts:
+
+```bash
+clutch doctor --output json
+```
+
+Doctor exits with status `0` when there are no failures and `3` when the
+environment has a failure.
+
+## List jobs
+
+Show recent jobs in a readable table:
+
+```bash
+clutch list --db foam-clutch.db
+clutch list --db foam-clutch.db --state RUNNING --limit 10
+```
+
+For scripts, JSON is written only to standard output:
+
+```bash
+clutch list --db foam-clutch.db --output json | jq
+```
+
+Human-readable status and error messages go to standard error, so they do not
+corrupt the JSON stream.
+
+## Exit codes
+
+| Code | Meaning |
+|---:|---|
+| `0` | Command completed successfully |
+| `1` | Job or run failed |
+| `2` | Invalid usage or validation error |
+| `3` | Environment problem, such as missing Slurm tools |
 
 ## Where to look in the code
 
@@ -230,7 +289,7 @@ an arbitrary bare executable, and the batch script is rendered entirely from
 manifest fields. Create a starter manifest with:
 
 ```bash
-clutch init -o manifest.yaml -solver foamRun -case ./case
+clutch init --output manifest.yaml --solver foamRun --case ./case
 ```
 
 Full schema (`examples/generic.yaml`):
@@ -362,7 +421,7 @@ go test -race ./...
 Validate a case before submitting:
 
 ```bash
-clutch validate -manifest manifest.yaml
+clutch validate --manifest manifest.yaml
 ```
 
 The command prints JSON containing the parsed manifest, preflight report, and
@@ -371,8 +430,8 @@ an error when validation fails.
 ## Run an OpenFOAM case
 
 ```bash
-clutch run -manifest /home/shared/openfoam/heavySimple/manifest.yaml
-clutch run -manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml
+clutch run --manifest /home/shared/openfoam/heavySimple/manifest.yaml
+clutch run --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml
 ```
 
 That one command validates the manifest and case, stages it into the
@@ -383,8 +442,8 @@ ID, run directory, and both log paths. Defaults: `-db` is
 `log.solver` and `slurm-<id>.out` while watching:
 
 ```bash
-clutch run -manifest /home/shared/openfoam/heavySimple/manifest.yaml -tail
-clutch run -manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml -tail
+clutch run --manifest /home/shared/openfoam/heavySimple/manifest.yaml --tail
+clutch run --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml --tail
 ```
 
 `submit`/`watch`/`status`/`cancel` below are the same pipeline split into
@@ -439,9 +498,9 @@ clutch watch \
 One-shot refresh, cancel, and listing:
 
 ```bash
-clutch status -db foam-clutch.db -id <local-job-id> -refresh
-clutch cancel -db foam-clutch.db -id <local-job-id>
-clutch list -db foam-clutch.db -state RUNNING
+clutch status --db foam-clutch.db --id <local-job-id> --refresh
+clutch cancel --db foam-clutch.db --id <local-job-id>
+clutch list --db foam-clutch.db --state RUNNING
 ```
 
 ## Choose a scheduler backend
@@ -468,10 +527,10 @@ the case directory and the physics model declared in `controlDict`
 both manifests and is never special-cased:
 
 ```bash
-clutch validate -manifest /home/shared/openfoam/heavySimple/manifest.yaml
-clutch validate -manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml
-clutch run -manifest /home/shared/openfoam/heavySimple/manifest.yaml
-clutch run -manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml
+clutch validate --manifest /home/shared/openfoam/heavySimple/manifest.yaml
+clutch validate --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml
+clutch run --manifest /home/shared/openfoam/heavySimple/manifest.yaml
+clutch run --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml
 squeue
 tail -f /home/shared/openfoam/heavySimple/.foam-runs/<job-id>/slurm-<slurm-id>.out
 ```
@@ -522,17 +581,17 @@ past job from the database:
 
 ```bash
 # stream the newest heavySimple job (no IDs typed):
-clutch logs -manifest /home/shared/openfoam/heavySimple/manifest.yaml -latest
+clutch logs --manifest /home/shared/openfoam/heavySimple/manifest.yaml --latest
 
 # stream the newest heavyBuoyant job:
-clutch logs -manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml -latest
+clutch logs --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml --latest
 
 # stream one specific job:
-clutch logs -manifest /home/shared/openfoam/heavySimple/manifest.yaml -id <local-job-id>
+clutch logs --manifest /home/shared/openfoam/heavySimple/manifest.yaml --id <local-job-id>
 
 # plain tail -f with auto-resolved paths (no IDs typed):
-tail -f $(clutch logs -manifest /home/shared/openfoam/heavySimple/manifest.yaml -latest -follow=false)
-tail -f $(clutch logs -manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml -latest -follow=false)
+tail -f $(clutch logs --manifest /home/shared/openfoam/heavySimple/manifest.yaml --latest --follow=false)
+tail -f $(clutch logs --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml --latest --follow=false)
 ```
 
 Other layouts for reference:

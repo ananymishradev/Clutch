@@ -30,50 +30,7 @@ var Version = "dev"
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-	if len(os.Args) < 2 {
-		usage()
-		os.Exit(2)
-	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	// `clutch -manifest m.yaml` (leading flag, no subcommand) defaults to run.
-	if strings.HasPrefix(os.Args[1], "-") {
-		if err := run(ctx, os.Args[1:]); err != nil {
-			log.Fatal(err)
-		}
-		return
-	}
-	var err error
-	switch os.Args[1] {
-	case "validate":
-		err = validate(ctx, os.Args[2:])
-	case "submit":
-		err = submit(ctx, os.Args[2:])
-	case "run", "it":
-		err = run(ctx, os.Args[2:])
-	case "watch":
-		err = watch(ctx, os.Args[2:])
-	case "status":
-		err = status(ctx, os.Args[2:])
-	case "cancel":
-		err = cancel(ctx, os.Args[2:])
-	case "list":
-		err = listJobs(ctx, os.Args[2:])
-	case "logs":
-		err = logs(ctx, os.Args[2:])
-	case "init":
-		err = initManifest(os.Args[2:])
-	case "serve":
-		err = serve(ctx, os.Args[2:])
-	case "version":
-		fmt.Printf("clutch %s\n", Version)
-	default:
-		usage()
-		os.Exit(2)
-	}
-	if err != nil {
-		log.Fatal(err)
-	}
+	os.Exit(executeRoot())
 }
 
 func submit(ctx context.Context, args []string) error {
@@ -139,6 +96,8 @@ func run(ctx context.Context, args []string) error {
 	interval := fs.Duration("interval", 15*time.Second, "watch poll interval (e.g. 10s, 1m)")
 	tail := fs.Bool("tail", false, "stream log.solver and slurm-*.out while watching")
 	tailInterval := fs.Duration("tail-interval", 5*time.Second, "log tail poll interval")
+	dryRun := fs.Bool("dry-run", false, "validate, stage, and render without submitting")
+	noWatch := fs.Bool("no-watch", false, "submit and exit without watching")
 	_ = fs.Parse(args)
 
 	db := strings.TrimSpace(*dbPath)
@@ -151,13 +110,23 @@ func run(ctx context.Context, args []string) error {
 		submitCtx, cancel = context.WithTimeout(ctx, *timeout)
 		defer cancel()
 	}
+	// Fail fast on manifest/case problems before touching the database or
+	// Slurm, so a typo never creates stray state.
+	if *dryRun {
+		plan, err := (&service.Service{Preflight: preflight.Runner{}, Observer: cliObserver{}}).Plan(ctx, *manifestPath)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("# dry run: nothing was submitted\n")
+		fmt.Printf("# cache: %s (%s)\n", plan.Staged.Path, map[bool]string{true: "hit", false: "miss"}[plan.Staged.Cached])
+		fmt.Printf("# rendered batch script:\n%s", plan.Script)
+		return nil
+	}
 	scheduler, backendName, err := selectScheduler(*backend)
 	if err != nil {
 		return err
 	}
 	log.Printf("clutch run backend=%s manifest=%s db=%s", backendName, *manifestPath, db)
-	// Fail fast on manifest/case problems before touching the database or
-	// Slurm, so a typo never creates stray state.
 	vs := service.Service{Preflight: preflight.Runner{}}
 	if _, _, err := vs.Validate(ctx, *manifestPath); err != nil {
 		return err
@@ -168,7 +137,7 @@ func run(ctx context.Context, args []string) error {
 	}
 	defer st.Close()
 	metrics := &telemetry.Metrics{}
-	s := service.Service{Scheduler: scheduler, Store: st, Preflight: preflight.Runner{}, Metrics: metrics}
+	s := service.Service{Scheduler: scheduler, Store: st, Preflight: preflight.Runner{}, Metrics: metrics, Observer: cliObserver{}}
 	result, err := s.Submit(submitCtx, *manifestPath)
 	if err != nil {
 		return err
@@ -177,6 +146,9 @@ func run(ctx context.Context, args []string) error {
 	log.Printf("solver log: %s", filepath.Join(result.RunPath, "log.solver"))
 	log.Printf("slurm log:  %s", filepath.Join(result.RunPath, fmt.Sprintf("slurm-%d.out", result.SlurmID)))
 	_ = json.NewEncoder(os.Stdout).Encode(result)
+	if *noWatch {
+		return nil
+	}
 
 	// Watching is decoupled from the submit timeout: Ctrl-C stops polling
 	// without losing the job record (Slurm keeps running; re-watch later).
