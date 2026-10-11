@@ -51,11 +51,27 @@ func run(ctx context.Context, args []string) error {
 	tailInterval := fs.Duration("tail-interval", 5*time.Second, "log tail poll interval")
 	dryRun := fs.Bool("dry-run", false, "validate, stage, and render without submitting")
 	noWatch := fs.Bool("no-watch", false, "submit and exit without watching")
+	output := fs.StringP("output", "o", outputFormat, "output format: table or json")
+	plain := fs.Bool("no-color", noColor, "disable terminal colors and live view")
 	_ = fs.Parse(args)
+	outputFormat = *output
+	noColor = *plain
 
 	db := strings.TrimSpace(*dbPath)
 	if db == "" {
 		db = filepath.Join(filepath.Dir(*manifestPath), "foam-clutch.db")
+	}
+	if liveRunEnabled() && !*dryRun {
+		return runLive(ctx, liveRunOptions{
+			Manifest: *manifestPath, DB: db, Backend: *backend,
+			Timeout: *timeout, Interval: *interval, Tail: *tail,
+			TailInterval: *tailInterval, NoWatch: *noWatch,
+		})
+	}
+	if !liveRunEnabled() {
+		var stop context.CancelFunc
+		ctx, stop = signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+		defer stop()
 	}
 	submitCtx := ctx
 	if *timeout > 0 {

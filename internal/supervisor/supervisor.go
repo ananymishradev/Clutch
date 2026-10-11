@@ -15,6 +15,7 @@ type Supervisor struct {
 	Store        *store.Store
 	Metrics      *telemetry.Metrics
 	PollInterval time.Duration
+	Observer     func(state string, slurmID int)
 	// MaxUnknown caps consecutive State errors before Watch gives up.
 	// Slurm forgets finished jobs after MinJobAge (~5 min) and this cluster
 	// has no accounting, so a job that vanished long ago can never resolve
@@ -73,6 +74,7 @@ func (s *Supervisor) Watch(ctx context.Context, localID string, slurmID int) err
 	// default 15s interval always observe the terminal state before Slurm
 	// forgets the job (~MinJobAge).
 	unknown := 0
+	lastState := ""
 	poll := func() (bool, error) {
 		states, err := s.Scheduler.State(ctx, slurmID)
 		if err != nil {
@@ -91,6 +93,10 @@ func (s *Supervisor) Watch(ctx context.Context, localID string, slurmID int) err
 			return false, nil
 		}
 		local := slurmToLocal(states[0])
+		if s.Observer != nil && local != lastState {
+			s.Observer(local, slurmID)
+		}
+		lastState = local
 		if s.Metrics != nil {
 			switch local {
 			case "REQUEUED":

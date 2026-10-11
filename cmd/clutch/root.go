@@ -148,8 +148,7 @@ func newRunCommand() *cobra.Command {
 	return &cobra.Command{
 		Use: "run", Aliases: []string{"it"}, DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-			defer stop()
+			ctx := context.Background()
 			return run(ctx, args)
 		},
 	}
