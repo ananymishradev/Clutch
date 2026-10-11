@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+dir=${FAKESLURM_DIR:?}
+if [ "${FAKESLURM_BLOCK_SBATCH:-}" = 1 ]; then
+  while [ ! -f "$dir/release-sbatch" ]; do sleep 0.05; done
+fi
+printf '%s\n' 48213

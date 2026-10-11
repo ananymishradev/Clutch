@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+dir=${FAKESLURM_DIR:?}
+state=RUNNING
+if [ -f "$dir/state" ]; then state=$(cat "$dir/state"); fi
+printf '%s\n' "$state"

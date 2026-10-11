@@ -61,6 +61,7 @@ func runLive(ctx context.Context, opts liveRunOptions) error {
 	watchCtx, stopWatch := context.WithCancel(runCtx)
 	defer stopWatch()
 	var submitted atomic.Bool
+	var detached atomic.Bool
 	var result store.Job
 	var submitResult service.Result
 	var submitErr error
@@ -68,6 +69,7 @@ func runLive(ctx context.Context, opts liveRunOptions) error {
 
 	var program *tea.Program
 	onDetach := func() {
+		detached.Store(true)
 		detachRun(submitted.Load, stopRun, stopWatch)
 	}
 	checkpointSeconds := 0
@@ -75,8 +77,8 @@ func runLive(ctx context.Context, opts liveRunOptions) error {
 		checkpointSeconds = m.Solver.CheckpointSeconds
 	}
 
-	model := runview.New([]string{"manifest", "cache", "run dir", "submitted"}, checkpointSeconds, true, onDetach)
-	program = tea.NewProgram(model, tea.WithOutput(os.Stderr))
+	model := runview.New([]string{"manifest", "preflight", "cache", "run dir", "submitted"}, checkpointSeconds, true, onDetach)
+	program = tea.NewProgram(model, tea.WithOutput(os.Stderr), tea.WithoutSignalHandler())
 
 	go func() {
 		defer close(resultCh)
@@ -127,6 +129,8 @@ func runLive(ctx context.Context, opts liveRunOptions) error {
 	go func() {
 		select {
 		case <-sigCh:
+			detached.Store(true)
+			detachRun(submitted.Load, stopRun, stopWatch)
 			program.Send(runview.DetachMsg{})
 		case <-resultCh:
 		case <-ctx.Done():
@@ -140,9 +144,16 @@ func runLive(ctx context.Context, opts liveRunOptions) error {
 	if !ok {
 		return fmt.Errorf("live view returned unexpected model type")
 	}
-	<-resultCh
+	if finalModel.Detached || detached.Load() {
+		select {
+		case <-resultCh:
+		case <-time.After(2 * time.Second):
+		}
+	} else {
+		<-resultCh
+	}
 	if !submitted.Load() {
-		if finalModel.Detached {
+		if finalModel.Detached || detached.Load() {
 			return exitError{code: 130, err: fmt.Errorf("interrupted before submission")}
 		}
 		if submitErr != nil {

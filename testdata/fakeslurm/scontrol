@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+dir=${FAKESLURM_DIR:?}
+if [ "${1:-}" = show ] && [ "${2:-}" = config ]; then
+  printf '%s\n' 'JobRequeue = 1'
+  exit 0
+fi
+state=RUNNING
+if [ -f "$dir/state" ]; then state=$(cat "$dir/state"); fi
+printf 'JobState=%s\n' "$state"
