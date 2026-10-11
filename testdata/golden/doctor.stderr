@@ -1,0 +1,18 @@
+[ok] Slurm CLI          sbatch, squeue, scontrol, sacct, scancel available
+[skip] Slurm REST         not configured; using cli backend
+[skip] JWT                no token configured
+[ok] Slurm policy       requeue enabled
+[fail] OpenFOAM           OpenFOAM bashrc was not found
+  hint: set FOAM_BASHRC or pass runtime.foamBashrc in the manifest
+[fail] MPI                missing: mpirun, srun
+  hint: install Slurm and add its commands to PATH
+[ok] Storage paths      DB, cache, and run directories are writable; SQLite WAL is available
+[warn] Disk space         6.6 GiB free
+  hint: free disk space or configure cache/run directories on a larger filesystem
+
+3 passed · 1 warning · 2 failed
+error: command failed
+
+  doctor found environment failures
+
+  hint: run `clutch --help` to see available commands

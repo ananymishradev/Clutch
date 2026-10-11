@@ -221,13 +221,12 @@ func (s *Service) Submit(ctx context.Context, manifestPath string) (Result, erro
 		return Result{}, fmt.Errorf("store is not configured")
 	}
 	s.observe("manifest", StageStarted, manifestPath)
-	m, report, err := s.Validate(ctx, manifestPath)
+	m, _, err := s.Validate(ctx, manifestPath)
 	if err != nil {
 		s.observe("manifest", StageFailed, err.Error())
 		return Result{}, err
 	}
 	s.observe("manifest", StageDone, m.Name)
-	s.observe("preflight", StageDone, fmt.Sprintf("%d finding(s)", len(report.Findings)))
 	cacheDir := m.Storage.CacheDir
 	if cacheDir == "" {
 		cacheDir = filepath.Join(filepath.Dir(manifestPath), ".foam-cache")

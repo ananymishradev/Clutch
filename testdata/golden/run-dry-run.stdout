@@ -1,0 +1,70 @@
+# dry run: nothing was submitted
+# cache: <TEMP_PATH><CASE_HASH> (hit)
+# rendered batch script:
+#!/bin/bash
+#SBATCH --job-name=pty-case
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --ntasks=1
+#SBATCH --time=<TIMESTAMP>
+#SBATCH --exclusive
+#SBATCH --hint=nomultithread
+#SBATCH --requeue
+#SBATCH --signal=B:USR1@600
+#SBATCH --output='<TEMP_PATH><CASE_HASH>'/slurm-%j.out
+#SBATCH --error='<TEMP_PATH><CASE_HASH>'/slurm-%j.err
+set -euo pipefail
+echo "=== foam-clutch job: pty-case ==="
+echo "solver=simpleFoam ranks=1 wall=<TIMESTAMP> mesh=blockMesh launcher=mpirun fileHandler=collated"
+date; echo "nodelist: ${SLURM_NODELIST:-unknown} job: ${SLURM_JOB_ID:-unknown}"
+
+# OpenFOAM environment (per manifest runtime.foamBashrc).
+# NOTE: foam bashrc dereferences unset $ZSH_NAME, so drop nounset around it.
+set +e +u
+source '/etc/bash.bashrc'
+set -e -u
+echo "OpenFOAM ${WM_PROJECT_VERSION:-unknown} at ${WM_PROJECT_DIR:-unknown}"
+export OMP_NUM_THREADS=1
+BASHRC='/etc/bash.bashrc'
+foam_serial() { bash -c "source $BASHRC && $*"; }
+foam_mpi()    { mpirun -np "${NTASKS:-1}" bash -c "source $BASHRC && exec $*"; }
+
+cd '<TEMP_PATH><CASE_HASH>'
+pwd; ls
+
+# --- mesh (strategy from manifest) ---
+echo "--- blockMesh (strategy blockMesh) ---"
+foam_serial 'blockMesh' 2>&1 | tee log.blockMesh
+
+# --- decompose (idempotent) ---
+echo "--- decomposePar skipped (serial run, ranks=1) ---"
+
+# --- solver (from manifest solver.name/arguments) ---
+checkpoint() {
+  echo "USR1 received: requesting writeNow checkpoint"
+  foam_serial 'foamDictionary -entry stopAt -set writeNow system/controlDict' || true
+  touch .foam-checkpoint-requested
+}
+trap checkpoint USR1
+if [ -f system/controlDict ]; then
+  foam_serial 'foamDictionary -entry startFrom -set latestTime system/controlDict' || true
+fi
+echo "--- serial simpleFoam -fileHandler collated ---"
+set +e
+foam_serial 'simpleFoam -fileHandler collated' > log.solver 2>&1
+SOLVER_RC=$?
+set -e
+echo "solver exit: $SOLVER_RC"
+tail -n 20 log.solver || true
+if [ -f .foam-checkpoint-requested ] && [ -n "${SLURM_JOB_ID:-}" ]; then
+  echo "checkpoint requested: requeue $SLURM_JOB_ID"
+  scontrol requeue "$SLURM_JOB_ID"
+fi
+
+# --- post ---
+if [ "$SOLVER_RC" -eq 0 ] && [ ! -f .foam-checkpoint-requested ]; then
+  echo "--- post skipped (no reconstruct/commands) ---"
+else
+  echo "--- post skipped (solver rc=$SOLVER_RC or checkpoint requested) ---"
+fi
+exit $SOLVER_RC

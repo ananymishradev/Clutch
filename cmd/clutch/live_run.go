@@ -174,6 +174,9 @@ type liveStageObserver struct{ send func(tea.Msg) }
 
 func (o liveStageObserver) Stage(name string, status service.StageStatus, detail string) {
 	o.send(runview.StageMsg{Name: name, Status: string(status), Detail: detail})
+	if name == "manifest" && status == service.StageDone {
+		o.send(runview.StageMsg{Name: "preflight", Status: "done", Detail: "validated"})
+	}
 }
 
 func tailSolverToProgram(ctx context.Context, p *tea.Program, runPath string, interval time.Duration) {

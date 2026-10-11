@@ -2,7 +2,7 @@
 set -eu
 dir=${FAKESLURM_DIR:?}
 if [ "${1:-}" = show ] && [ "${2:-}" = config ]; then
-  printf '%s\n' 'JobRequeue = 1'
+  printf 'JobRequeue = %s\n' "${JOBREQUEUE:-1}"
   exit 0
 fi
 state=RUNNING
