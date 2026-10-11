@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ananymishradev/sluice/internal/brand"
 	"gopkg.in/yaml.v3"
 )
 
@@ -129,6 +130,9 @@ func Load(path string) (Manifest, error) {
 	if err := m.Validate(); err != nil {
 		return Manifest{}, err
 	}
+	if m.APIVersion == brand.LegacyAPIVersion {
+		fmt.Fprintln(os.Stderr, "warning: apiVersion "+brand.LegacyAPIVersion+" is deprecated; use "+brand.APIVersion+" instead")
+	}
 	return m, nil
 }
 
@@ -208,8 +212,8 @@ func (m Manifest) Validate() error {
 	if m.APIVersion == "" {
 		problems = append(problems, "apiVersion is required")
 	}
-	if m.APIVersion != "" && m.APIVersion != "foam-clutch/v1alpha1" {
-		problems = append(problems, "apiVersion must be foam-clutch/v1alpha1")
+	if m.APIVersion != "" && m.APIVersion != brand.APIVersion && m.APIVersion != brand.LegacyAPIVersion {
+		problems = append(problems, "apiVersion must be "+brand.APIVersion+" or "+brand.LegacyAPIVersion)
 	}
 	if m.Name == "" {
 		problems = append(problems, "name is required")

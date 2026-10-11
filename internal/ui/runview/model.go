@@ -6,7 +6,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/ananymishradev/foam-clutch/internal/ui"
+	"github.com/ananymishradev/sluice/internal/ui"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"

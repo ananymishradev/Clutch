@@ -2,7 +2,7 @@
 set -eu
 
 root=$(git rev-parse --show-toplevel)
-tmp=$(mktemp -d "${TMPDIR:-/tmp}/foam-clutch-mutations.XXXXXX")
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/sluice-mutations.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
 diff_file="$tmp/worktree.diff"
@@ -27,7 +27,7 @@ run_mutation() {
 	fi
 	copy_untracked
 	if git -C "$wt" apply "$root/testdata/mutations/$name.patch" >/dev/null 2>&1 &&
-		(cd "$wt" && go test ./cmd/clutch -run "^${test_name}$" -count=1 >/dev/null 2>&1); then
+		(cd "$wt" && go test ./cmd/sluice -run "^${test_name}$" -count=1 >/dev/null 2>&1); then
 		printf '%-28s %-42s NO\n' "$name" "$test_name"
 		git worktree remove --force "$wt" >/dev/null 2>&1 || true
 		return 1

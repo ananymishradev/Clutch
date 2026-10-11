@@ -14,13 +14,14 @@ import (
 	"syscall"
 	"time"
 
-	slurmrest "github.com/ananymishradev/foam-clutch"
-	"github.com/ananymishradev/foam-clutch/internal/preflight"
-	schedcli "github.com/ananymishradev/foam-clutch/internal/scheduler"
-	"github.com/ananymishradev/foam-clutch/internal/service"
-	"github.com/ananymishradev/foam-clutch/internal/store"
-	"github.com/ananymishradev/foam-clutch/internal/supervisor"
-	"github.com/ananymishradev/foam-clutch/internal/telemetry"
+	slurmrest "github.com/ananymishradev/sluice"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/preflight"
+	schedcli "github.com/ananymishradev/sluice/internal/scheduler"
+	"github.com/ananymishradev/sluice/internal/service"
+	"github.com/ananymishradev/sluice/internal/store"
+	"github.com/ananymishradev/sluice/internal/supervisor"
+	"github.com/ananymishradev/sluice/internal/telemetry"
 	"github.com/spf13/pflag"
 )
 
@@ -35,15 +36,15 @@ func main() {
 // run is the single command that validates, submits, and watches an
 // OpenFOAM case until Slurm reaches a terminal state:
 //
-//	clutch run -manifest /home/shared/openfoam/heavySimple/manifest.yaml
+//	sluice run -manifest /home/shared/openfoam/heavySimple/manifest.yaml
 //
 // Defaults are chosen so that running from the case directory needs no flags
-// at all (manifest.yaml + foam-clutch.db next to it, CLI backend). It is
+// at all (manifest.yaml + sluice.db next to it, CLI backend). It is
 // equivalent to validate + submit -watch, with an optional live log tail.
 func run(ctx context.Context, args []string) error {
 	fs := pflag.NewFlagSet("run", pflag.ExitOnError)
 	manifestPath := fs.String("manifest", "manifest.yaml", "path to manifest")
-	dbPath := fs.String("db", "", "SQLite database path (default <manifest-dir>/foam-clutch.db)")
+	dbPath := fs.String("db", "", "SQLite database path (default <manifest-dir>/"+brand.DefaultDBFile+")")
 	backend := fs.String("backend", "auto", "scheduler backend: auto, rest, cli")
 	timeout := fs.Duration("timeout", 5*time.Minute, "submit-phase timeout (0 disables)")
 	interval := fs.Duration("interval", 15*time.Second, "watch poll interval (e.g. 10s, 1m)")
@@ -59,7 +60,11 @@ func run(ctx context.Context, args []string) error {
 
 	db := strings.TrimSpace(*dbPath)
 	if db == "" {
-		db = filepath.Join(filepath.Dir(*manifestPath), "foam-clutch.db")
+		var usedLegacy bool
+		db, usedLegacy = brand.ResolveDBPath(*manifestPath, "")
+		if usedLegacy {
+			fmt.Fprintln(os.Stderr, brand.LegacyDBNotice(db))
+		}
 	}
 	if liveRunEnabled() && !*dryRun {
 		return runLive(ctx, liveRunOptions{
@@ -95,7 +100,7 @@ func run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("clutch run backend=%s manifest=%s db=%s", backendName, *manifestPath, db)
+	log.Printf(brand.Name+" run backend=%s manifest=%s db=%s", backendName, *manifestPath, db)
 	vs := service.Service{Preflight: preflight.Runner{}}
 	if _, _, err := vs.Validate(ctx, *manifestPath); err != nil {
 		return err
@@ -292,9 +297,9 @@ func tokenProvider() func(context.Context) (string, error) {
 // logs resolves a job's log files from the database so no ID ever has to
 // be pasted into tail -f by hand:
 //
-//	clutch logs -manifest <case>/manifest.yaml -latest          # stream newest job
-//	clutch logs -manifest <case>/manifest.yaml -id <local-id>   # stream one job
-//	tail -f $(clutch logs -manifest <case>/manifest.yaml -latest -follow=false)
+//	sluice logs -manifest <case>/manifest.yaml -latest          # stream newest job
+//	sluice logs -manifest <case>/manifest.yaml -id <local-id>   # stream one job
+//	tail -f $(sluice logs -manifest <case>/manifest.yaml -latest -follow=false)
 //
 // logPaths returns every log address for a job: the solver log plus the
 // Slurm output and error files Slurm was told to write.
@@ -313,7 +318,7 @@ func serveWithConfig(ctx context.Context, addr, dbPath string, _ io.Writer) erro
 	}
 	defer st.Close()
 	metrics := &telemetry.Metrics{}
-	apiToken := strings.TrimSpace(os.Getenv("FOAM_CLUTCH_API_TOKEN"))
+	apiToken := strings.TrimSpace(brand.Getenv("API_TOKEN"))
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", metrics.Handler())
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -359,7 +364,7 @@ func serveWithConfig(ctx context.Context, addr, dbPath string, _ io.Writer) erro
 		defer cancel()
 		_ = srv.Shutdown(shutdown)
 	}()
-	log.Printf("clutch listening on %s version=%s", addr, Version)
+	log.Printf(brand.Name+" listening on %s version=%s", addr, Version)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
 	}
@@ -376,17 +381,17 @@ func withLogging(next http.Handler) http.Handler {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage:")
-	fmt.Fprintln(os.Stderr, "  clutch -manifest manifest.yaml [-db foam-clutch.db] [-backend auto|rest|cli] [-tail]")
-	fmt.Fprintln(os.Stderr, "  clutch it -manifest manifest.yaml [-db foam-clutch.db] [-backend auto|rest|cli] [-tail]")
-	fmt.Fprintln(os.Stderr, "  clutch run -manifest manifest.yaml [-db foam-clutch.db] [-backend auto|rest|cli] [-tail]")
-	fmt.Fprintln(os.Stderr, "  clutch validate -manifest manifest.yaml")
-	fmt.Fprintln(os.Stderr, "  clutch submit -manifest manifest.yaml [-db foam-clutch.db] [-backend auto|rest|cli] [-watch]")
-	fmt.Fprintln(os.Stderr, "  clutch watch -db foam-clutch.db -id <job-id> -slurm <slurm-id>")
-	fmt.Fprintln(os.Stderr, "  clutch status -db foam-clutch.db -id <job-id> [-refresh] [-slurm <id>]")
-	fmt.Fprintln(os.Stderr, "  clutch cancel -db foam-clutch.db -id <job-id> [-slurm <id>]")
-	fmt.Fprintln(os.Stderr, "  clutch list -db foam-clutch.db [-state DONE]")
-	fmt.Fprintln(os.Stderr, "  clutch logs -manifest manifest.yaml [-id <job-id> | -latest] [-follow=false]")
-	fmt.Fprintln(os.Stderr, "  clutch init -o manifest.yaml -solver foamRun -case ./case")
-	fmt.Fprintln(os.Stderr, "  clutch serve [-addr :8080] [-db foam-clutch.db]")
-	fmt.Fprintln(os.Stderr, "  clutch version")
+	fmt.Fprintln(os.Stderr, "  "+brand.Name+" -manifest manifest.yaml [-db "+brand.DefaultDBFile+"] [-backend auto|rest|cli] [-tail]")
+	fmt.Fprintln(os.Stderr, "  "+brand.Name+" it -manifest manifest.yaml [-db "+brand.DefaultDBFile+"] [-backend auto|rest|cli] [-tail]")
+	fmt.Fprintln(os.Stderr, "  "+brand.Name+" run -manifest manifest.yaml [-db "+brand.DefaultDBFile+"] [-backend auto|rest|cli] [-tail]")
+	fmt.Fprintln(os.Stderr, "  "+brand.Name+" validate -manifest manifest.yaml")
+	fmt.Fprintln(os.Stderr, "  "+brand.Name+" submit -manifest manifest.yaml [-db "+brand.DefaultDBFile+"] [-backend auto|rest|cli] [-watch]")
+	fmt.Fprintln(os.Stderr, "  "+brand.Name+" watch -db "+brand.DefaultDBFile+" -id <job-id> -slurm <slurm-id>")
+	fmt.Fprintln(os.Stderr, "  "+brand.Name+" status -db "+brand.DefaultDBFile+" -id <job-id> [-refresh] [-slurm <id>]")
+	fmt.Fprintln(os.Stderr, "  "+brand.Name+" cancel -db "+brand.DefaultDBFile+" -id <job-id> [-slurm <id>]")
+	fmt.Fprintln(os.Stderr, "  "+brand.Name+" list -db "+brand.DefaultDBFile+" [-state DONE]")
+	fmt.Fprintln(os.Stderr, "  "+brand.Name+" logs -manifest manifest.yaml [-id <job-id> | -latest] [-follow=false]")
+	fmt.Fprintln(os.Stderr, "  "+brand.Name+" init -o manifest.yaml -solver foamRun -case ./case")
+	fmt.Fprintln(os.Stderr, "  "+brand.Name+" serve [-addr :8080] [-db "+brand.DefaultDBFile+"]")
+	fmt.Fprintln(os.Stderr, "  "+brand.Name+" version")
 }

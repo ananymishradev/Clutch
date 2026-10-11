@@ -44,7 +44,7 @@
 {{end}}#SBATCH --output={{.CaseDir}}/slurm-%j.out
 #SBATCH --error={{.CaseDir}}/slurm-%j.err
 set -euo pipefail
-echo "=== foam-clutch job: {{.Name}} ==="
+echo "=== sluice job: {{.Name}} ==="
 echo "solver={{.Solver}} ranks={{.Ranks}} wall={{.WallTime}} mesh={{.MeshStrategy}} launcher={{.Launcher}}"
 date; echo "nodelist: ${SLURM_NODELIST:-unknown} job: ${SLURM_JOB_ID:-unknown}"
 

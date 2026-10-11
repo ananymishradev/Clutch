@@ -1,7 +1,7 @@
 .git
 .github
-clutch
-clutch-*
+sluice
+sluice-*
 *.db
 *.db-shm
 *.db-wal

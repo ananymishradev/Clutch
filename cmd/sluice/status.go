@@ -7,9 +7,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/ananymishradev/foam-clutch/internal/store"
-	"github.com/ananymishradev/foam-clutch/internal/supervisor"
-	"github.com/ananymishradev/foam-clutch/internal/ui"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/store"
+	"github.com/ananymishradev/sluice/internal/supervisor"
+	"github.com/ananymishradev/sluice/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -23,14 +24,14 @@ type statusConfig struct {
 }
 
 func newStatusCommand() *cobra.Command {
-	cfg := statusConfig{DB: "foam-clutch.db", Backend: "auto"}
+	cfg := statusConfig{DB: brand.DefaultDBFile, Backend: "auto"}
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Show the status of a submitted job",
 		Long:  "Read a local job record and optionally refresh it from Slurm.",
-		Example: `  clutch status --db foam-clutch.db --id <local-job-id>
-  clutch status --db foam-clutch.db --id <local-job-id> --refresh
-  clutch status --db foam-clutch.db --id <local-job-id> --refresh --output json`,
+		Example: "  " + brand.Name + " status --db " + brand.DefaultDBFile + " --id <local-job-id>\n" +
+			"  " + brand.Name + " status --db " + brand.DefaultDBFile + " --id <local-job-id> --refresh\n" +
+			"  " + brand.Name + " status --db " + brand.DefaultDBFile + " --id <local-job-id> --refresh --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runStatus(cmd.Context(), cfg, cmd.OutOrStdout(), cmd.ErrOrStderr())
 		},

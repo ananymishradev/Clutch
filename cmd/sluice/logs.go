@@ -6,12 +6,12 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/ananymishradev/foam-clutch/internal/store"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -30,9 +30,9 @@ func newLogsCommand() *cobra.Command {
 		Use:   "logs",
 		Short: "Show or follow job log paths",
 		Long:  "Resolve the solver and Slurm log files for a job, or follow them until interrupted.",
-		Example: `  clutch logs --manifest case/manifest.yaml --latest
-  clutch logs --db foam-clutch.db --id <local-job-id>
-  tail -f $(clutch logs --manifest case/manifest.yaml --latest --follow=false)`,
+		Example: "  " + brand.Name + " logs --manifest case/manifest.yaml --latest\n" +
+			"  " + brand.Name + " logs --db " + brand.DefaultDBFile + " --id <local-job-id>\n" +
+			"  tail -f $(" + brand.Name + " logs --manifest case/manifest.yaml --latest --follow=false)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runLogs(cmd.Context(), cfg, cmd.OutOrStdout(), cmd.ErrOrStderr())
 		},
@@ -52,9 +52,13 @@ func runLogs(ctx context.Context, cfg logsConfig, stdout, stderr io.Writer) erro
 	db := strings.TrimSpace(cfg.DB)
 	if db == "" {
 		if cfg.Manifest != "" {
-			db = filepath.Join(filepath.Dir(cfg.Manifest), "foam-clutch.db")
+			var usedLegacy bool
+			db, usedLegacy = brand.ResolveDBPath(cfg.Manifest, "")
+			if usedLegacy {
+				fmt.Fprintln(stderr, brand.LegacyDBNotice(db))
+			}
 		} else {
-			db = "foam-clutch.db"
+			db = brand.DefaultDBFile
 		}
 	}
 	if cfg.ID == "" && !cfg.Latest {

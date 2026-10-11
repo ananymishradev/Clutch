@@ -9,12 +9,13 @@ import (
 	"strings"
 	"time"
 
-	slurmrest "github.com/ananymishradev/foam-clutch"
-	"github.com/ananymishradev/foam-clutch/internal/manifest"
-	"github.com/ananymishradev/foam-clutch/internal/preflight"
-	"github.com/ananymishradev/foam-clutch/internal/stage"
-	"github.com/ananymishradev/foam-clutch/internal/store"
-	"github.com/ananymishradev/foam-clutch/internal/telemetry"
+	slurmrest "github.com/ananymishradev/sluice"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/manifest"
+	"github.com/ananymishradev/sluice/internal/preflight"
+	"github.com/ananymishradev/sluice/internal/stage"
+	"github.com/ananymishradev/sluice/internal/store"
+	"github.com/ananymishradev/sluice/internal/telemetry"
 	"github.com/google/uuid"
 )
 
@@ -366,7 +367,7 @@ func checkpointScript(m manifest.Manifest, caseDir string) (string, error) {
 	fmt.Fprintf(&sb, "#SBATCH --error=%s/slurm-%%j.err\n", shellQuote(caseDir))
 
 	fmt.Fprintf(&sb, "set -euo pipefail\n")
-	fmt.Fprintf(&sb, "echo \"=== foam-clutch job: %s ===\"\n", m.Name)
+	fmt.Fprintf(&sb, "echo \"=== %s job: %s ===\"\n", brand.Name, m.Name)
 	fmt.Fprintf(&sb, "echo \"solver=%s ranks=%d wall=%s mesh=%s launcher=%s fileHandler=%s\"\n",
 		m.Solver.Name, ranks, wall, m.Mesh.Strategy, m.Runtime.MPI.Launcher, m.Solver.FileHandler)
 	sb.WriteString("date; echo \"nodelist: ${SLURM_NODELIST:-unknown} job: ${SLURM_JOB_ID:-unknown}\"\n")

@@ -14,6 +14,11 @@ log.post
 log.reconstructPar
 processor*/
 # Build output.
+/sluice
+/bin/sluice
+sluice-*
+sluice.db
 /clutch
+clutch-*
 /foam-clutch
 /tmp/

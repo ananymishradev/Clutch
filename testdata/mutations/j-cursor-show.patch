@@ -1,6 +1,6 @@
 # expected-test: TestPTY_TerminalRestoredAndNoAltScreen
---- a/cmd/clutch/live_run.go
-+++ b/cmd/clutch/live_run.go
+--- a/cmd/sluice/live_run.go
++++ b/cmd/sluice/live_run.go
 @@ -140,6 +140,7 @@
  	if err != nil {
  		return err

@@ -10,11 +10,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ananymishradev/foam-clutch/internal/preflight"
-	"github.com/ananymishradev/foam-clutch/internal/service"
-	"github.com/ananymishradev/foam-clutch/internal/store"
-	"github.com/ananymishradev/foam-clutch/internal/supervisor"
-	"github.com/ananymishradev/foam-clutch/internal/telemetry"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/preflight"
+	"github.com/ananymishradev/sluice/internal/service"
+	"github.com/ananymishradev/sluice/internal/store"
+	"github.com/ananymishradev/sluice/internal/supervisor"
+	"github.com/ananymishradev/sluice/internal/telemetry"
 	"github.com/spf13/cobra"
 )
 
@@ -29,14 +30,14 @@ type submitConfig struct {
 }
 
 func newSubmitCommand() *cobra.Command {
-	cfg := submitConfig{Manifest: "manifest.yaml", DB: "foam-clutch.db", Backend: "auto", Timeout: 5 * time.Minute, Interval: 15 * time.Second}
+	cfg := submitConfig{Manifest: "manifest.yaml", DB: brand.DefaultDBFile, Backend: "auto", Timeout: 5 * time.Minute, Interval: 15 * time.Second}
 	cmd := &cobra.Command{
 		Use:   "submit",
 		Short: "Submit an OpenFOAM case to Slurm",
 		Long:  "Validate, stage, and submit an OpenFOAM case. Use --watch to wait for a terminal Slurm state.",
-		Example: `  clutch submit --manifest manifest.yaml --backend cli
-  clutch submit --manifest manifest.yaml --db foam-clutch.db --watch
-  clutch submit --manifest manifest.yaml --backend rest --timeout 2m`,
+		Example: "  " + brand.Name + " submit --manifest manifest.yaml --backend cli\n" +
+			"  " + brand.Name + " submit --manifest manifest.yaml --db " + brand.DefaultDBFile + " --watch\n" +
+			"  " + brand.Name + " submit --manifest manifest.yaml --backend rest --timeout 2m",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runSubmit(cmd.Context(), cfg, cmd.OutOrStdout(), cmd.ErrOrStderr())
 		},

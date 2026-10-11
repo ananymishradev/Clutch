@@ -5,8 +5,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/ananymishradev/foam-clutch/internal/manifest"
-	"github.com/ananymishradev/foam-clutch/internal/ui"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/manifest"
+	"github.com/ananymishradev/sluice/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -28,9 +29,9 @@ func newInitCommand() *cobra.Command {
 		Use:   "init",
 		Short: "Create a starter manifest",
 		Long:  "Scaffold a manifest for an OpenFOAM case and Slurm job.",
-		Example: `  clutch init --output manifest.yaml --case ./case
-  clutch init --solver simpleFoam --nodes 2 --tasks 32
-  clutch init --name cavity --checkpoint 0`,
+		Example: "  " + brand.Name + " init --output manifest.yaml --case ./case\n" +
+			"  " + brand.Name + " init --solver simpleFoam --nodes 2 --tasks 32\n" +
+			"  " + brand.Name + " init --name cavity --checkpoint 0",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if ui := cmd.ErrOrStderr(); ui != nil {
 				fmt.Fprint(ui, bannerForCommand())
@@ -60,7 +61,7 @@ func bannerForCommand() string {
 }
 
 func runInit(cfg initConfig, stdout, _ io.Writer) error {
-	doc := fmt.Sprintf(`apiVersion: foam-clutch/v1alpha1
+	doc := fmt.Sprintf(`apiVersion: `+brand.APIVersion+`
 name: %s
 
 case:

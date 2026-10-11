@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# uninstall.sh - remove the `clutch` CLI binary.
+# uninstall.sh - remove the `sluice` CLI binary.
 # Usage:
 #   ./uninstall.sh [--prefix ~/.local] [--bindir <dir>] [--system] [--all] [-h|--help]
 #
-# Default removes $PREFIX/bin/clutch (i.e. ~/.local/bin/clutch).
+# Default removes $PREFIX/bin/sluice (i.e. ~/.local/bin/sluice).
 #   --system == --bindir /usr/local/bin
-#   --all    == also scan GOPATH/bin, ~/.local/bin, /usr/local/bin.
+#   --all    == also scan GOPATH/bin, ~/.local/bin, /usr/local/bin for sluice,
+#              plus a legacy `clutch` ONLY IF its `version` output identifies
+#              it as Foam Clutch (never delete an unrelated `clutch` binary).
 # Never touches databases, .foam-cache/, or .foam-runs/ (user data).
 set -euo pipefail
 
@@ -16,6 +18,24 @@ ALL=0
 
 usage() {
   sed -n '2,10p' "$0"
+}
+
+# is_legacy_clutch <path>: true only when `path version` output identifies
+# the binary as Foam Clutch. Never identifies by filename alone.
+is_legacy_clutch() {
+  local bin="$1" out
+  [ -x "$bin" ] || return 1
+  out="$("$bin" version 2>&1 || true)"
+  case "$out" in
+    *"Foam Clutch"*|*"foam-clutch"*) return 0 ;;
+  esac
+  case "$out" in
+    *"sluice"*|*"Sluice"*) return 1 ;;
+  esac
+  case "$out" in
+    clutch\ *|clutch) return 0 ;;
+  esac
+  return 1
 }
 
 while [ $# -gt 0 ]; do
@@ -35,10 +55,10 @@ elif [ -z "$BINDIR" ]; then
   BINDIR="$PREFIX/bin"
 fi
 
-targets=("$BINDIR/clutch")
+targets=("$BINDIR/sluice")
 if [ "$ALL" -eq 1 ]; then
-  GOPATH_BIN="$(go env GOPATH 2>/dev/null || true)/bin/clutch"
-  for c in "$HOME/.local/bin/clutch" "$GOPATH_BIN" "/usr/local/bin/clutch"; do
+  GOPATH_BIN="$(go env GOPATH 2>/dev/null || true)/bin/sluice"
+  for c in "$HOME/.local/bin/sluice" "$GOPATH_BIN" "/usr/local/bin/sluice"; do
     skip=0
     for t in "${targets[@]}"; do [ "$t" = "$c" ] && skip=1; done
     [ "$skip" -eq 0 ] && targets+=("$c")
@@ -47,7 +67,7 @@ fi
 
 removed=0
 for target in "${targets[@]}"; do
-  [ -z "$target" ] || [ "$target" = "/bin/clutch" ] && continue
+  [ -z "$target" ] || [ "$target" = "/bin/sluice" ] && continue
   if [ -e "$target" ] || [ -L "$target" ]; then
     if [ -w "$(dirname "$target")" ]; then
       rm -f "$target"
@@ -62,8 +82,28 @@ for target in "${targets[@]}"; do
   fi
 done
 
-if command -v clutch >/dev/null 2>&1; then
-  echo "warn: clutch still on PATH at $(command -v clutch) (another copy exists, use --all to scan all locations)" >&2
+# Legacy handling under --all only, with version-output identification.
+if [ "$ALL" -eq 1 ]; then
+  GOPATH_CLUTCH="$(go env GOPATH 2>/dev/null || true)/bin/clutch"
+  for legacy in "$HOME/.local/bin/clutch" "$GOPATH_CLUTCH" "/usr/local/bin/clutch"; do
+    [ -e "$legacy" ] || [ -L "$legacy" ] || continue
+    if is_legacy_clutch "$legacy"; then
+      if [ -w "$(dirname "$legacy")" ]; then
+        rm -f "$legacy"
+      else
+        echo "need write access to $(dirname "$legacy"), retrying with sudo"
+        sudo rm -f "$legacy"
+      fi
+      echo "removed legacy Foam Clutch $legacy"
+      removed=1
+    else
+      echo "kept unrelated clutch binary at $legacy (version output did not identify it as Foam Clutch)" >&2
+    fi
+  done
+fi
+
+if command -v sluice >/dev/null 2>&1; then
+  echo "warn: sluice still on PATH at $(command -v sluice) (another copy exists, use --all to scan all locations)" >&2
 fi
 [ "$removed" -eq 1 ] || { echo "nothing removed" >&2; exit 1; }
 echo "uninstall done"

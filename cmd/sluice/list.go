@@ -7,8 +7,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/ananymishradev/foam-clutch/internal/store"
-	"github.com/ananymishradev/foam-clutch/internal/ui"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/store"
+	"github.com/ananymishradev/sluice/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -20,14 +21,14 @@ type listConfig struct {
 }
 
 func newListCommand() *cobra.Command {
-	cfg := listConfig{DB: "foam-clutch.db", Limit: 50}
+	cfg := listConfig{DB: brand.DefaultDBFile, Limit: 50}
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List submitted jobs",
-		Long:  "List local Foam Clutch jobs, optionally filtered by state.",
-		Example: `  clutch list
-  clutch list --state RUNNING --limit 20
-  clutch list --output json`,
+		Long:  "List local " + brand.DisplayName + " jobs, optionally filtered by state.",
+		Example: "  " + brand.Name + " list\n" +
+			"  " + brand.Name + " list --state RUNNING --limit 20\n" +
+			"  " + brand.Name + " list --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runList(cmd.Context(), cfg, cmd.OutOrStdout(), cmd.ErrOrStderr())
 		},
@@ -60,7 +61,7 @@ func runList(ctx context.Context, cfg listConfig, stdout, stderr io.Writer) erro
 		return json.NewEncoder(stdout).Encode(rows)
 	}
 	if len(jobs) == 0 {
-		fmt.Fprintln(stderr, "No jobs yet. Try: clutch run --manifest manifest.yaml")
+		fmt.Fprintln(stderr, "No jobs yet. Try: "+brand.Name+" run --manifest manifest.yaml")
 		return nil
 	}
 	ui.JobsTable(stderr, jobs, ui.Detect(noColor).Color)

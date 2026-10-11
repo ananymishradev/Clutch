@@ -1,10 +1,10 @@
-# Foam Clutch, in plain English
+# Sluice, in plain English
 
 ## The short version
 
-Foam Clutch is a small operations layer for OpenFOAM and Slurm.
+Sluice is a small operations layer for OpenFOAM and Slurm.
 
-OpenFOAM runs the simulation. Slurm decides when and where it runs. Foam Clutch
+OpenFOAM runs the simulation. Slurm decides when and where it runs. Sluice
 sits between them and makes the workflow safer and easier to repeat:
 
 ```text
@@ -29,7 +29,7 @@ submit it to Slurm
 checkpoint, requeue, and watch the result
 ```
 
-Foam Clutch is not trying to replace OpenFOAM, Slurm, ParaView, Prometheus, or
+Sluice is not trying to replace OpenFOAM, Slurm, ParaView, Prometheus, or
 your cluster administrator. It connects those pieces and gives them a
 consistent workflow.
 
@@ -46,7 +46,7 @@ Large simulations fail in expensive ways:
 - many processor directories overload a parallel filesystem;
 - performance problems remain invisible until a long production run.
 
-Foam Clutch addresses the first group of problems today. The rest of this
+Sluice addresses the first group of problems today. The rest of this
 document describes the operational work that a production deployment may still
 need.
 
@@ -69,7 +69,7 @@ makes scripts and automation much less surprising.
 The current schema is intentionally small:
 
 ```yaml
-apiVersion: foam-clutch/v1alpha1
+apiVersion: sluice/v1alpha1
 name: cavity
 case:
   path: ./case
@@ -86,7 +86,7 @@ processing, container selection, and output retention become first-class.
 
 ### 2. Preflight catches problems early
 
-Before submission, Foam Clutch checks that the case has the expected OpenFOAM
+Before submission, Sluice checks that the case has the expected OpenFOAM
 layout:
 
 ```text
@@ -120,7 +120,7 @@ policy thresholds.
 
 ### 3. The cache avoids repeated work
 
-Foam Clutch calculates a SHA-256 digest from:
+Sluice calculates a SHA-256 digest from:
 
 - each relative file name;
 - each file's contents.
@@ -134,7 +134,7 @@ That digest becomes the cache key:
 If the same case is submitted again, the cache can be reused. This is useful
 for parameter studies and repeated solver attempts.
 
-The cache is not used as the active working directory. Instead, Foam Clutch
+The cache is not used as the active working directory. Instead, Sluice
 materializes a separate run directory:
 
 ```text
@@ -196,7 +196,7 @@ HTTP status itself is successful.
 
 ### 6. Checkpointing is cooperative
 
-Slurm can warn the batch process before wall time expires. Foam Clutch's solver
+Slurm can warn the batch process before wall time expires. Sluice's solver
 script catches `USR1` and asks OpenFOAM to write immediately:
 
 ```bash

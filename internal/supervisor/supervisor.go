@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ananymishradev/foam-clutch"
-	"github.com/ananymishradev/foam-clutch/internal/store"
-	"github.com/ananymishradev/foam-clutch/internal/telemetry"
+	"github.com/ananymishradev/sluice"
+	"github.com/ananymishradev/sluice/internal/store"
+	"github.com/ananymishradev/sluice/internal/telemetry"
 )
 
 type Supervisor struct {

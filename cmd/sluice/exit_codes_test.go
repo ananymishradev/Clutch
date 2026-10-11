@@ -75,7 +75,7 @@ func TestPipeUsageAndValidationExitCodes(t *testing.T) {
 
 func runCommandPipes(t *testing.T, args []string, extra map[string]string) (string, string, int) {
 	t.Helper()
-	cmd := exec.Command(clutchBinary, args...)
+	cmd := exec.Command(sluiceBinary, args...)
 	env := filteredEnv()
 	env = append(env, "TERM=dumb", "HOME="+t.TempDir(), "PATH="+fakeBinDir(t)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	for key, value := range extra {

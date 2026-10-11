@@ -7,9 +7,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/ananymishradev/foam-clutch/internal/store"
-	"github.com/ananymishradev/foam-clutch/internal/supervisor"
-	"github.com/ananymishradev/foam-clutch/internal/telemetry"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/store"
+	"github.com/ananymishradev/sluice/internal/supervisor"
+	"github.com/ananymishradev/sluice/internal/telemetry"
 	"github.com/spf13/cobra"
 )
 
@@ -23,14 +24,14 @@ type watchConfig struct {
 }
 
 func newWatchCommand() *cobra.Command {
-	cfg := watchConfig{DB: "foam-clutch.db", Backend: "auto", Interval: 15 * time.Second}
+	cfg := watchConfig{DB: brand.DefaultDBFile, Backend: "auto", Interval: 15 * time.Second}
 	cmd := &cobra.Command{
 		Use:   "watch",
 		Short: "Watch a submitted Slurm job",
 		Long:  "Poll Slurm and reconcile a submitted job until it reaches a terminal state.",
-		Example: `  clutch watch --db foam-clutch.db --id <local-job-id> --slurm <slurm-job-id>
-  clutch watch --db foam-clutch.db --id <local-job-id> --slurm <slurm-job-id> --backend cli
-  clutch watch --db foam-clutch.db --id <local-job-id> --slurm <slurm-job-id> --output json`,
+		Example: "  " + brand.Name + " watch --db " + brand.DefaultDBFile + " --id <local-job-id> --slurm <slurm-job-id>\n" +
+			"  " + brand.Name + " watch --db " + brand.DefaultDBFile + " --id <local-job-id> --slurm <slurm-job-id> --backend cli\n" +
+			"  " + brand.Name + " watch --db " + brand.DefaultDBFile + " --id <local-job-id> --slurm <slurm-job-id> --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runWatch(cmd.Context(), cfg, cmd.OutOrStdout(), cmd.ErrOrStderr())
 		},

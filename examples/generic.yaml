@@ -1,7 +1,7 @@
 # Generic example: any OpenFOAM solver works. The solver name is an arbitrary
 # bare executable (stock or custom-compiled); the runner never branches on it.
 # Copy this file and change solver.name, case.path, and resources.
-apiVersion: foam-clutch/v1alpha1
+apiVersion: sluice/v1alpha1
 name: myCase
 
 case:

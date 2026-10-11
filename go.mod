@@ -1,4 +1,4 @@
-module github.com/ananymishradev/foam-clutch
+module github.com/ananymishradev/sluice
 
 go 1.26.0
 

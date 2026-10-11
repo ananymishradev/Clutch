@@ -1,4 +1,4 @@
-<TIMESTAMP> clutch run backend=cli manifest=<TEMP_PATH> db=<TEMP_PATH>
+<TIMESTAMP> sluice run backend=cli manifest=<TEMP_PATH> db=<TEMP_PATH>
 <TIMESTAMP> [ok] manifest     pty-case
 <TIMESTAMP> [ok] cache        <TEMP_PATH>/<CASE_HASH>
 <TIMESTAMP> [ok] run dir      <TEMP_PATH>/<LOCAL_ID>

@@ -9,8 +9,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/ananymishradev/foam-clutch/internal/service"
-	"github.com/ananymishradev/foam-clutch/internal/ui"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/service"
+	"github.com/ananymishradev/sluice/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -58,7 +59,7 @@ func executeRoot() int {
 	root := newRoot()
 	if err := root.Execute(); err != nil {
 		t := ui.Detect(noColor)
-		ui.Error(os.Stderr, "command failed", err, "run `clutch --help` to see available commands", t.Color)
+		ui.Error(os.Stderr, "command failed", err, "run `"+brand.Name+" --help` to see available commands", t.Color)
 		var coded exitError
 		if errors.As(err, &coded) {
 			return coded.code
@@ -101,7 +102,7 @@ func isTTY(f *os.File) bool {
 
 func newRoot() *cobra.Command {
 	root := &cobra.Command{
-		Use:           "clutch",
+		Use:           brand.Name,
 		Short:         "Run OpenFOAM cases on Slurm",
 		SilenceUsage:  true,
 		SilenceErrors: true,

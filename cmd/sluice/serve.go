@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/ananymishradev/sluice/internal/brand"
 	"github.com/spf13/cobra"
 )
 
@@ -13,14 +14,14 @@ type serveConfig struct {
 }
 
 func newServeCommand() *cobra.Command {
-	cfg := serveConfig{Addr: ":8080", DB: "foam-clutch.db"}
+	cfg := serveConfig{Addr: ":8080", DB: brand.DefaultDBFile}
 	cmd := &cobra.Command{
 		Use:   "serve",
-		Short: "Run the Foam Clutch HTTP service",
+		Short: "Run the " + brand.DisplayName + " HTTP service",
 		Long:  "Serve health, readiness, metrics, version, and job endpoints over HTTP.",
-		Example: `  clutch serve
-  clutch serve --addr :9090
-  clutch serve --db /var/lib/foam-clutch/foam-clutch.db`,
+		Example: "  " + brand.Name + " serve\n" +
+			"  " + brand.Name + " serve --addr :9090\n" +
+			"  " + brand.Name + " serve --db /var/lib/" + brand.Name + "/" + brand.DefaultDBFile,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runServe(cmd.Context(), cfg, cmd.OutOrStdout(), cmd.ErrOrStderr())
 		},

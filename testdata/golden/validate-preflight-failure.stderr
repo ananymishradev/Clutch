@@ -7,4 +7,4 @@ error: command failed
 
   invalid: preflight failed with 1 finding(s)
 
-  hint: run `clutch --help` to see available commands
+  hint: run `sluice --help` to see available commands

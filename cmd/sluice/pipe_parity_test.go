@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ananymishradev/foam-clutch/internal/testutil"
+	"github.com/ananymishradev/sluice/internal/testutil"
 )
 
 func runPipe(t *testing.T, args []string, fakeState string) (stdout, stderr string, code int) {
@@ -26,7 +26,7 @@ func runPipe(t *testing.T, args []string, fakeState string) (stdout, stderr stri
 	} else {
 		commandArgs = append(commandArgs, "--manifest", manifest, "--db", db, "--backend", "cli")
 	}
-	cmd := exec.Command(clutchBinary, commandArgs...)
+	cmd := exec.Command(sluiceBinary, commandArgs...)
 	env := filteredEnv()
 	env = append(env,
 		"TERM=dumb",
@@ -96,7 +96,7 @@ func TestPipe_RunPreflightFailureReportsFindings(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(fake, "state"), []byte("COMPLETED\n"), 0o640); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(clutchBinary, "run", "--manifest", manifest, "--db", db, "--backend", "cli")
+	cmd := exec.Command(sluiceBinary, "run", "--manifest", manifest, "--db", db, "--backend", "cli")
 	cmd.Env = append(filteredEnv(), "TERM=dumb", "FAKESLURM_DIR="+fake,
 		"HOME="+t.TempDir(), "PATH="+fakeBinDir(t)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	var stdout, stderr bytes.Buffer
@@ -185,11 +185,11 @@ func TestPipe_LogsPathsOnly(t *testing.T) {
 	env := filteredEnv()
 	env = append(env, "FAKESLURM_DIR="+fake, "HOME="+t.TempDir(),
 		"PATH="+fakeBinDir(t)+string(os.PathListSeparator)+os.Getenv("PATH"))
-	cmd := exec.Command(clutchBinary, "logs", "--manifest", manifest, "--db", db, "--latest", "--follow=false")
+	cmd := exec.Command(sluiceBinary, "logs", "--manifest", manifest, "--db", db, "--latest", "--follow=false")
 	cmd.Env, cmd.Stdin = env, strings.NewReader("")
 	var out, errOut bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errOut
-	seed := exec.Command(clutchBinary, "run", "--manifest", manifest, "--db", db, "--backend", "cli", "--no-watch")
+	seed := exec.Command(sluiceBinary, "run", "--manifest", manifest, "--db", db, "--backend", "cli", "--no-watch")
 	seed.Env = env
 	if err := seed.Run(); err != nil {
 		t.Fatalf("seed run failed: %v", err)
@@ -225,7 +225,7 @@ func TestPipe_StderrDevNullKeepsRunData(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(fake, "state"), []byte("COMPLETED\n"), 0o640); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(clutchBinary, "run", "--manifest", manifest, "--db", db, "--backend", "cli", "--no-watch")
+	cmd := exec.Command(sluiceBinary, "run", "--manifest", manifest, "--db", db, "--backend", "cli", "--no-watch")
 	cmd.Env = append(filteredEnv(),
 		"TERM=dumb",
 		"FAKESLURM_DIR="+fake,

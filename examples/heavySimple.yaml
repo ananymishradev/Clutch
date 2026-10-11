@@ -1,4 +1,4 @@
-apiVersion: foam-clutch/v1alpha1
+apiVersion: sluice/v1alpha1
 name: heavySimple
 
 case:

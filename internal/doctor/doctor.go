@@ -133,7 +133,7 @@ func (c storageCheck) Run(ctx context.Context) Result {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return Result{Category: "Storage", Name: c.Name(), Status: FAIL, Detail: err.Error(), Hint: "choose a writable database directory"}
 	}
-	f, err := os.CreateTemp(dir, ".clutch-doctor-*")
+	f, err := os.CreateTemp(dir, ".sluice-doctor-*")
 	if err != nil {
 		return Result{Category: "Storage", Name: c.Name(), Status: FAIL, Detail: err.Error(), Hint: "choose a writable database directory"}
 	}
@@ -156,6 +156,7 @@ func DefaultChecks(dbPath string) []Check {
 			db: base, cache: filepath.Join(base, ".foam-cache"), run: filepath.Join(base, ".foam-runs"),
 		}},
 		diskSpaceCheck{path: base},
+		legacyInstallCheck{},
 	}
 }
 

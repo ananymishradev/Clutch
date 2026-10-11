@@ -25,9 +25,9 @@ jobs:
         run: |
           CGO_ENABLED=0 go build -trimpath \
             -ldflags "-s -w -X main.Version=${GITHUB_SHA}" \
-            -o clutch ./cmd/clutch
-          ./clutch version
-          ./clutch 2>&1 | head -5
+            -o sluice ./cmd/sluice
+          ./sluice version
+          ./sluice 2>&1 | head -5
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -54,14 +54,14 @@ jobs:
         run: |
           go build -trimpath \
             -ldflags "-s -w -X main.Version=${GITHUB_REF_NAME}" \
-            -o clutch-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/clutch
-          sha256sum clutch-${{ matrix.goos }}-${{ matrix.goarch }} > clutch-${{ matrix.goos }}-${{ matrix.goarch }}.sha256
+            -o sluice-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/sluice
+          sha256sum sluice-${{ matrix.goos }}-${{ matrix.goarch }} > sluice-${{ matrix.goos }}-${{ matrix.goarch }}.sha256
       - uses: actions/upload-artifact@v4
         with:
-          name: clutch-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: sluice-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
-            clutch-${{ matrix.goos }}-${{ matrix.goarch }}
-            clutch-${{ matrix.goos }}-${{ matrix.goarch }}.sha256
+            sluice-${{ matrix.goos }}-${{ matrix.goarch }}
+            sluice-${{ matrix.goos }}-${{ matrix.goarch }}.sha256
 
   publish:
     if: startsWith(github.ref, 'refs/tags/v')

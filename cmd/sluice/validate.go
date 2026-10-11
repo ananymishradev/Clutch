@@ -8,9 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ananymishradev/foam-clutch/internal/preflight"
-	"github.com/ananymishradev/foam-clutch/internal/service"
-	"github.com/ananymishradev/foam-clutch/internal/ui"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/preflight"
+	"github.com/ananymishradev/sluice/internal/service"
+	"github.com/ananymishradev/sluice/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -25,9 +26,9 @@ func newValidateCommand() *cobra.Command {
 		Use:   "validate",
 		Short: "Validate a manifest and its OpenFOAM case",
 		Long:  "Validate the manifest, case layout, links, directives, and optional OpenFOAM checks before submission.",
-		Example: `  clutch validate --manifest manifest.yaml
-  clutch validate --manifest examples/generic.yaml --output json
-  clutch validate --manifest manifest.yaml --no-color`,
+		Example: "  " + brand.Name + " validate --manifest manifest.yaml\n" +
+			"  " + brand.Name + " validate --manifest examples/generic.yaml --output json\n" +
+			"  " + brand.Name + " validate --manifest manifest.yaml --no-color",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runValidate(cmd.Context(), cfg, cmd.OutOrStdout(), cmd.ErrOrStderr())
 		},

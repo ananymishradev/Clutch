@@ -1,8 +1,8 @@
 # expected-test: TestPipe_RunPreflightFailureReportsFindings
---- a/cmd/clutch/main.go
-+++ b/cmd/clutch/main.go
+--- a/cmd/sluice/main.go
++++ b/cmd/sluice/main.go
 @@ -98,7 +98,7 @@
- 	log.Printf("clutch run backend=%s manifest=%s db=%s", backendName, *manifestPath, db)
+ 	log.Printf("sluice run backend=%s manifest=%s db=%s", backendName, *manifestPath, db)
  	vs := service.Service{Preflight: preflight.Runner{}}
  	if _, _, err := vs.Validate(ctx, *manifestPath); err != nil {
 -		return err

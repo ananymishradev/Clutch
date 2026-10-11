@@ -6,7 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ananymishradev/foam-clutch/internal/store"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/store"
 	"golang.org/x/sys/unix"
 )
 
@@ -30,7 +31,7 @@ func (c storagePathsCheck) Run(ctx context.Context) Result {
 		if err := os.MkdirAll(path, 0o750); err != nil {
 			return Result{Category: "Storage", Name: c.Name(), Status: FAIL, Detail: fmt.Sprintf("%s: %v", path, err), Hint: "choose writable DB, cache, and run directories"}
 		}
-		f, err := os.CreateTemp(path, ".clutch-doctor-*")
+		f, err := os.CreateTemp(path, ".sluice-doctor-*")
 		if err != nil {
 			return Result{Category: "Storage", Name: c.Name(), Status: FAIL, Detail: fmt.Sprintf("%s is not writable", path), Hint: "choose writable DB, cache, and run directories"}
 		}
@@ -38,7 +39,7 @@ func (c storagePathsCheck) Run(ctx context.Context) Result {
 		_ = os.Remove(f.Name())
 	}
 	if c.paths.db != "" {
-		dbPath := filepath.Join(c.paths.db, "foam-clutch-doctor.db")
+		dbPath := filepath.Join(c.paths.db, brand.Name+"-doctor.db")
 		st, err := store.Open(dbPath)
 		if err != nil {
 			return Result{Category: "Storage", Name: c.Name(), Status: FAIL, Detail: "SQLite/WAL could not be opened", Hint: "choose a writable database directory"}

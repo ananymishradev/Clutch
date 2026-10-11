@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	slurmrest "github.com/ananymishradev/foam-clutch"
+	slurmrest "github.com/ananymishradev/sluice"
 )
 
 type restProbeCheck struct {

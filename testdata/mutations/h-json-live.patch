@@ -1,7 +1,7 @@
 # expected-test: TestPTY_RunJSONDoesNotStartLiveView
-diff --git a/cmd/clutch/live_run.go b/cmd/clutch/live_run.go
---- a/cmd/clutch/live_run.go
-+++ b/cmd/clutch/live_run.go
+diff --git a/cmd/sluice/live_run.go b/cmd/sluice/live_run.go
+--- a/cmd/sluice/live_run.go
++++ b/cmd/sluice/live_run.go
 @@ -44,3 +44,3 @@ func liveRunEnabled() bool {
  	return term.IsTerminal(int(os.Stderr.Fd())) && !noColor &&
 -		os.Getenv("NO_COLOR") == "" && !strings.EqualFold(outputFormat, "json")

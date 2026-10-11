@@ -1,6 +1,6 @@
 {
   "manifest": {
-    "APIVersion": "foam-clutch/v1alpha1",
+    "APIVersion": "sluice/v1alpha1",
     "Name": "pty-case",
     "Case": {
       "Path": "<TEMP_PATH>",

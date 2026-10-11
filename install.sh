@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh - build and install the `clutch` CLI.
+# install.sh - build and install the `sluice` CLI.
 # Usage:
 #   ./install.sh [--prefix ~/.local] [--bindir <dir>] [--system] [--version <ver>] [-h|--help]
 #
@@ -55,24 +55,38 @@ if [ -z "$VERSION" ]; then
   fi
 fi
 
-echo "building clutch version=$VERSION"
+echo "building sluice version=$VERSION"
 cd "$REPO_ROOT"
-TMP_BIN="$(mktemp -d)/clutch"
+TMP_BIN="$(mktemp -d)/sluice"
 trap 'rm -rf "$(dirname "$TMP_BIN")"' EXIT
 CGO_ENABLED=0 go build -trimpath \
   -ldflags "-s -w -X main.Version=${VERSION}" \
-  -o "$TMP_BIN" ./cmd/clutch
+  -o "$TMP_BIN" ./cmd/sluice
 
 mkdir -p "$BINDIR"
 if [ -w "$BINDIR" ]; then
-  install -m 0755 "$TMP_BIN" "$BINDIR/clutch"
+  install -m 0755 "$TMP_BIN" "$BINDIR/sluice"
 else
   echo "need write access to $BINDIR, retrying with sudo"
-  sudo install -m 0755 "$TMP_BIN" "$BINDIR/clutch"
+  sudo install -m 0755 "$TMP_BIN" "$BINDIR/sluice"
 fi
 
-"$BINDIR/clutch" version
-echo "installed to $BINDIR/clutch"
+"$BINDIR/sluice" version
+echo "installed to $BINDIR/sluice"
+
+# Legacy notice: never delete the old copy, only inform.
+if command -v clutch >/dev/null 2>&1; then
+  OLD_BIN="$(command -v clutch)"
+  OLD_OUT="$("$OLD_BIN" version 2>&1 || true)"
+  case "$OLD_OUT" in
+    *"Foam Clutch"*|*"foam-clutch"*|clutch\ *)
+      echo "notice: legacy Foam Clutch install found at $OLD_BIN; it was left in place (remove it manually after migrating; see README Migrating from Foam Clutch)" >&2
+      ;;
+    *)
+      echo "notice: another binary named clutch found at $OLD_BIN; it was left in place" >&2
+      ;;
+  esac
+fi
 
 # PATH hint.
 case ":$PATH:" in

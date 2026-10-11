@@ -9,7 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ananymishradev/foam-clutch/internal/store"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -23,14 +24,14 @@ type cancelConfig struct {
 }
 
 func newCancelCommand() *cobra.Command {
-	cfg := cancelConfig{DB: "foam-clutch.db", Backend: "auto"}
+	cfg := cancelConfig{DB: brand.DefaultDBFile, Backend: "auto"}
 	cmd := &cobra.Command{
 		Use:   "cancel",
 		Short: "Cancel a submitted Slurm job",
 		Long:  "Cancel a local job or Slurm job and update the local record when an ID is available.",
-		Example: `  clutch cancel --db foam-clutch.db --id <local-job-id>
-  clutch cancel --db foam-clutch.db --slurm <slurm-job-id> --yes
-  clutch cancel --db foam-clutch.db --id <local-job-id> --backend rest`,
+		Example: "  " + brand.Name + " cancel --db " + brand.DefaultDBFile + " --id <local-job-id>\n" +
+			"  " + brand.Name + " cancel --db " + brand.DefaultDBFile + " --slurm <slurm-job-id> --yes\n" +
+			"  " + brand.Name + " cancel --db " + brand.DefaultDBFile + " --id <local-job-id> --backend rest",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCancel(cmd.Context(), cfg, cmd.OutOrStdout(), cmd.ErrOrStderr())
 		},

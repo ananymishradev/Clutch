@@ -22,3 +22,23 @@ populated lists; refreshed and JSON status; path-only logs; cancel; and doctor
 output. Timestamps, runtime IDs, hashes, temporary paths, and table trailing
 whitespace are normalized. Run the generator twice with the same
 `BASELINE_SHA` after changing normalization to verify determinism.
+
+## Post-rename transform
+
+After the Foam Clutch to Sluice rename, `testdata/golden/rename.sh`
+transforms these baseline files in place (the baseline itself is never
+regenerated from the new code). Rules, longest tokens first:
+
+1. `foam-clutch/v1alpha1` -> `sluice/v1alpha1` (manifest apiVersion)
+2. `foam-clutch.sbatch` -> `sluice.sbatch` (per-run script; no-op in the
+   current goldens because run paths are normalized to `<TEMP_PATH>`)
+3. `foam-clutch.db` -> `sluice.db` (default DB file; no-op for the same
+   normalization reason)
+4. `foam-clutch job:` -> `sluice job:` (rendered batch echo)
+5. `clutch run backend=` -> `sluice run backend=` (plain run log prefix)
+6. `run \`clutch --help\`` -> `run \`sluice --help\`` (structured error hint)
+7. `Try: clutch run` -> `Try: sluice run` (list-empty hint)
+
+Every changed line in `git diff testdata/golden/` is explained by one of
+these rules. A test failure not explained by them is a behavior change:
+stop and report it instead of editing the golden.

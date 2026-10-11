@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	slurmrest "github.com/ananymishradev/foam-clutch"
-	"github.com/ananymishradev/foam-clutch/internal/preflight"
-	"github.com/ananymishradev/foam-clutch/internal/store"
-	"github.com/ananymishradev/foam-clutch/internal/telemetry"
+	slurmrest "github.com/ananymishradev/sluice"
+	"github.com/ananymishradev/sluice/internal/preflight"
+	"github.com/ananymishradev/sluice/internal/store"
+	"github.com/ananymishradev/sluice/internal/telemetry"
 )
 
 type fakeScheduler struct{ spec slurmrest.JobSpec }
@@ -58,7 +58,7 @@ func TestSubmitStagesPersistsAndBuildsCheckpointScript(t *testing.T) {
 	caseDir := filepath.Join(root, "case")
 	writeCase(t, caseDir, "application simpleFoam;\nrunTimeModifiable true;\n", "2", true)
 	manifestPath := filepath.Join(root, "manifest.yaml")
-	data := []byte("apiVersion: foam-clutch/v1alpha1\nname: test\ncase:\n  path: ./case\nresources:\n  partition: normal\n  nodes: 1\n  tasksPerNode: 2\n  timeLimitMinutes: 5\nsolver:\n  name: simpleFoam\n  checkpointSeconds: 60\nstorage:\n  cacheDir: ./cache\n  runDir: ./runs\n")
+	data := []byte("apiVersion: sluice/v1alpha1\nname: test\ncase:\n  path: ./case\nresources:\n  partition: normal\n  nodes: 1\n  tasksPerNode: 2\n  timeLimitMinutes: 5\nsolver:\n  name: simpleFoam\n  checkpointSeconds: 60\nstorage:\n  cacheDir: ./cache\n  runDir: ./runs\n")
 	if err := os.WriteFile(manifestPath, data, 0o640); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestSubmitObserverDoesNotAddSyntheticPreflightStage(t *testing.T) {
 	caseDir := filepath.Join(root, "case")
 	writeCase(t, caseDir, "application simpleFoam;\nrunTimeModifiable true;\n", "", true)
 	manifestPath := filepath.Join(root, "manifest.yaml")
-	data := []byte("apiVersion: foam-clutch/v1alpha1\nname: test\ncase:\n  path: ./case\nresources:\n  nodes: 1\n  tasksPerNode: 1\n  timeLimitMinutes: 5\nsolver:\n  name: simpleFoam\nstorage:\n  cacheDir: ./cache\n  runDir: ./runs\n")
+	data := []byte("apiVersion: sluice/v1alpha1\nname: test\ncase:\n  path: ./case\nresources:\n  nodes: 1\n  tasksPerNode: 1\n  timeLimitMinutes: 5\nsolver:\n  name: simpleFoam\nstorage:\n  cacheDir: ./cache\n  runDir: ./runs\n")
 	if err := os.WriteFile(manifestPath, data, 0o640); err != nil {
 		t.Fatal(err)
 	}

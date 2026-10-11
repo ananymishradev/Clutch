@@ -1,13 +1,15 @@
-# Foam Clutch
+# Sluice (formerly Foam Clutch)
 
 Run OpenFOAM cases on Slurm without repeating the same setup every time.
 
-Foam Clutch is a small Go tool that sits between your OpenFOAM case and the
+Sluice is not a scheduler; Slurm still decides when and where jobs run.
+
+Sluice is a small Go tool that sits between your OpenFOAM case and the
 Slurm scheduler. It checks the case before submitting it, keeps a reproducible
 cached copy, gives each run its own working directory, records job state in
 SQLite, and follows the job until it finishes.
 
-OpenFOAM still runs the simulation and Slurm still owns scheduling. Foam Clutch
+OpenFOAM still runs the simulation and Slurm still owns scheduling. Sluice
 just connects the two and keeps the workflow repeatable without hiding the
 cluster details you may need to troubleshoot a run.
 
@@ -42,7 +44,7 @@ Slurm state supervision and Prometheus metrics
 
 ## What it does for you
 
-- Strict YAML manifests using `foam-clutch/v1alpha1`
+- Strict YAML manifests using `sluice/v1alpha1`
 - OpenFOAM case checks for `system`, `constant`, and `0`
 - Protection against symlinks that escape the case directory
 - Rejection of code-loading directives such as:
@@ -78,56 +80,56 @@ Check container and MPI compatibility with your cluster before using it.
 
 ## Build and run from source
 
-If you are developing Foam Clutch, start in the repository checkout and run:
+If you are developing Sluice, start in the repository checkout and run:
 
 ```bash
 go mod download
 go test ./...
 ```
 
-Build the CLI into `bin/clutch` and check that it starts:
+Build the CLI into `bin/sluice` and check that it starts:
 
 ```bash
 mkdir -p bin
 CGO_ENABLED=0 go build -trimpath \
   -ldflags "-s -w -X main.Version=$(git rev-parse --short HEAD)" \
-  -o bin/clutch ./cmd/clutch
-./bin/clutch version
+  -o bin/sluice ./cmd/sluice
+./bin/sluice version
 ```
 
 Run a case with the binary you just built:
 
 ```bash
-./bin/clutch run --manifest /path/to/manifest.yaml
+./bin/sluice run --manifest /path/to/manifest.yaml
 ```
 
 Or start the HTTP service:
 
 ```bash
-./bin/clutch serve --addr :8080 --db foam-clutch.db
+./bin/sluice serve --addr :8080 --db sluice.db
 ```
 
 For a one-off run without producing a binary, use `go run`:
 
 ```bash
-go run ./cmd/clutch run --manifest /path/to/manifest.yaml
+go run ./cmd/sluice run --manifest /path/to/manifest.yaml
 ```
 
 ## Install and uninstall
 
 The easiest way to install the command is to use the included script. By
-default it builds `clutch` and places it in `~/.local/bin`:
+default it builds `sluice` and places it in `~/.local/bin`:
 
 ```bash
 ./install.sh
-clutch version
+sluice version
 ```
 
 If `~/.local/bin` is not on your `PATH`, add it for the current shell:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
-clutch version
+sluice version
 ```
 
 To install somewhere else, choose a prefix or an exact binary directory:
@@ -156,30 +158,52 @@ locations with:
 ./uninstall.sh --all
 ```
 
-These scripts remove only the `clutch` executable. They do not remove your
+These scripts remove only the `sluice` executable. They do not remove your
 SQLite databases, `.foam-cache` directories, or `.foam-runs` directories.
 
 If you do not want to install anything, use the source directly:
 
 ```bash
-go run ./cmd/clutch version
-go run ./cmd/clutch run --manifest /path/to/manifest.yaml
+go run ./cmd/sluice version
+go run ./cmd/sluice run --manifest /path/to/manifest.yaml
 ```
 
-The commands in the rest of this guide assume `clutch` is on your `PATH`.
+The commands in the rest of this guide assume `sluice` is on your `PATH`.
+
+## Migrating from Foam Clutch
+
+Sluice is a pure rename of Foam Clutch (`clutch` binary). No behavior changed
+except the names below. `.foam-cache/` and `.foam-runs/` keep their names.
+
+- Binary: `sluice` replaces `clutch`. The `it` alias for `run` stays. No
+  `clutch` shim is provided; the installer only prints a notice if it finds
+  an old copy.
+- Manifest `apiVersion`: new canonical `sluice/v1alpha1`. `sluice init`
+  writes the new value. `foam-clutch/v1alpha1` is still accepted with a
+  one-line deprecation warning on stderr.
+- Env vars: new `SLUICE_*` names (e.g. `SLUICE_API_TOKEN`) with fallback to
+  `FOAM_CLUTCH_*`. If both are set, the new one wins. A warning prints once
+  per process when only the old name is used. Values are never logged.
+- DB file: new default `sluice.db`. If `<manifest-dir>/foam-clutch.db`
+  exists and `sluice.db` does not, the old file is used with a one-time
+  notice. User data is never moved, renamed, copied, or deleted automatically.
+- Run script: new runs write `sluice.sbatch`; existing run directories are
+  untouched.
+- Metrics: `foam_clutch_*` became `sluice_*` with no dual emission. Update
+  dashboards and alerts (see CHANGELOG.md).
 
 ## Run a case
 
 ```bash
-clutch run --manifest manifest.yaml
+sluice run --manifest manifest.yaml
 ```
 
 `it` is a short alias for `run`. These three forms are identical:
 
 ```bash
-clutch --manifest manifest.yaml
-clutch it --manifest manifest.yaml
-clutch run --manifest manifest.yaml
+sluice --manifest manifest.yaml
+sluice it --manifest manifest.yaml
+sluice run --manifest manifest.yaml
 ```
 
 Use `--dry-run` to validate and stage a case and print the batch script without
@@ -187,13 +211,13 @@ creating a run directory, writing a database record, or submitting anything to
 Slurm:
 
 ```bash
-clutch run --manifest manifest.yaml --dry-run
+sluice run --manifest manifest.yaml --dry-run
 ```
 
 Use `--no-watch` when you want to submit the job and return immediately:
 
 ```bash
-clutch run --manifest manifest.yaml --no-watch
+sluice run --manifest manifest.yaml --no-watch
 ```
 
 ## Check the environment
@@ -202,13 +226,13 @@ Run `doctor` before sending a job to the queue. It checks the Slurm and MPI
 commands and verifies that the database directory is writable:
 
 ```bash
-clutch doctor
+sluice doctor
 ```
 
 Use JSON output in scripts:
 
 ```bash
-clutch doctor --output json
+sluice doctor --output json
 ```
 
 Doctor exits with status `0` when there are no failures and `3` when the
@@ -219,14 +243,14 @@ environment has a failure.
 Show recent jobs in a readable table:
 
 ```bash
-clutch list --db foam-clutch.db
-clutch list --db foam-clutch.db --state RUNNING --limit 10
+sluice list --db sluice.db
+sluice list --db sluice.db --state RUNNING --limit 10
 ```
 
 For scripts, JSON is written only to standard output:
 
 ```bash
-clutch list --db foam-clutch.db --output json | jq
+sluice list --db sluice.db --output json | jq
 ```
 
 Human-readable status and error messages go to standard error, so they do not
@@ -244,7 +268,7 @@ corrupt the JSON stream.
 ## Where to look in the code
 
 ```text
-cmd/clutch/
+cmd/sluice/
   main.go
   CLI commands and the local HTTP service
 
@@ -289,13 +313,13 @@ an arbitrary bare executable, and the batch script is rendered entirely from
 manifest fields. Create a starter manifest with:
 
 ```bash
-clutch init --output manifest.yaml --solver foamRun --case ./case
+sluice init --output manifest.yaml --solver foamRun --case ./case
 ```
 
 Full schema (`examples/generic.yaml`):
 
 ```yaml
-apiVersion: foam-clutch/v1alpha1
+apiVersion: sluice/v1alpha1
 name: cavity
 
 case:
@@ -351,7 +375,7 @@ Important fields:
 
 | Field | Meaning |
 |---|---|
-| `apiVersion` | Must be `foam-clutch/v1alpha1`. |
+| `apiVersion` | Must be `sluice/v1alpha1`. |
 | `name` | Slurm job name and local job name. |
 | `case.path` | OpenFOAM case directory. |
 | `case.include` | Extra top-level case files/dirs to stage and hash. |
@@ -380,7 +404,7 @@ for parallel runs, `checkpointSeconds` requires `runTimeModifiable true`, and
 
 ### Add extra files to the OpenFOAM case
 
-Foam Clutch always stages the standard OpenFOAM inputs (`0/` or `0.orig/`,
+Sluice always stages the standard OpenFOAM inputs (`0/` or `0.orig/`,
 `constant/`, and `system/`). Other files at the top level of the case are
 ignored unless you list them in `case.include`.
 
@@ -405,7 +429,7 @@ the compute node.
 
 Keep generated output and runner state out of `case.include`. The tool rejects
 `.git`, `.foam-cache`, `.foam-runs`, `processor*`, logs, and SQLite database
-files. After changing an included file, submit the job again so Foam Clutch
+files. After changing an included file, submit the job again so Sluice
 creates or reuses the correct cache entry.
 
 ## Check your setup
@@ -421,7 +445,7 @@ go test -race ./...
 Validate a case before submitting:
 
 ```bash
-clutch validate --manifest manifest.yaml
+sluice validate --manifest manifest.yaml
 ```
 
 The command prints JSON containing the parsed manifest, preflight report, and
@@ -430,20 +454,20 @@ an error when validation fails.
 ## Run an OpenFOAM case
 
 ```bash
-clutch run --manifest /home/shared/openfoam/heavySimple/manifest.yaml
-clutch run --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml
+sluice run --manifest /home/shared/openfoam/heavySimple/manifest.yaml
+sluice run --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml
 ```
 
 That one command validates the manifest and case, stages it into the
 content-addressed cache, materializes an isolated run directory, submits to
 Slurm, and watches until DONE/FAILED/CANCELLED — printing the local ID, Slurm
 ID, run directory, and both log paths. Defaults: `-db` is
-`<manifest-dir>/foam-clutch.db`, `-backend auto`. Add `-tail` to stream
+`<manifest-dir>/sluice.db`, `-backend auto`. Add `-tail` to stream
 `log.solver` and `slurm-<id>.out` while watching:
 
 ```bash
-clutch run --manifest /home/shared/openfoam/heavySimple/manifest.yaml --tail
-clutch run --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml --tail
+sluice run --manifest /home/shared/openfoam/heavySimple/manifest.yaml --tail
+sluice run --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml --tail
 ```
 
 `submit`/`watch`/`status`/`cancel` below are the same pipeline split into
@@ -466,18 +490,18 @@ export SLURM_JWT_FILE="$HOME/.slurm/token"  # or SLURM_JWT for short-lived setup
 Submit (CLI backend shown; needs nothing but Slurm on `PATH`):
 
 ```bash
-clutch submit \
+sluice submit \
   -manifest manifest.yaml \
-  -db foam-clutch.db \
+  -db sluice.db \
   -backend cli
 ```
 
 Submit and keep polling Slurm until the job reaches a terminal state:
 
 ```bash
-clutch submit \
+sluice submit \
   -manifest manifest.yaml \
-  -db foam-clutch.db \
+  -db sluice.db \
   -backend cli \
   -watch
 ```
@@ -489,8 +513,8 @@ Reconcile the state of an already-submitted job (updates the DB record to
 DONE/FAILED/CANCELLED once Slurm reaches a terminal state):
 
 ```bash
-clutch watch \
-  -db foam-clutch.db \
+sluice watch \
+  -db sluice.db \
   -id <local-job-id> \
   -slurm <slurm-job-id>
 ```
@@ -498,9 +522,9 @@ clutch watch \
 One-shot refresh, cancel, and listing:
 
 ```bash
-clutch status --db foam-clutch.db --id <local-job-id> --refresh
-clutch cancel --db foam-clutch.db --id <local-job-id>
-clutch list --db foam-clutch.db --state RUNNING
+sluice status --db sluice.db --id <local-job-id> --refresh
+sluice cancel --db sluice.db --id <local-job-id>
+sluice list --db sluice.db --state RUNNING
 ```
 
 ## Choose a scheduler backend
@@ -527,10 +551,10 @@ the case directory and the physics model declared in `controlDict`
 both manifests and is never special-cased:
 
 ```bash
-clutch validate --manifest /home/shared/openfoam/heavySimple/manifest.yaml
-clutch validate --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml
-clutch run --manifest /home/shared/openfoam/heavySimple/manifest.yaml
-clutch run --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml
+sluice validate --manifest /home/shared/openfoam/heavySimple/manifest.yaml
+sluice validate --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml
+sluice run --manifest /home/shared/openfoam/heavySimple/manifest.yaml
+sluice run --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml
 squeue
 tail -f /home/shared/openfoam/heavySimple/.foam-runs/<job-id>/slurm-<slurm-id>.out
 ```
@@ -551,7 +575,7 @@ state never affect the case hash.
 
 ## Find logs
 
-Every clutch run writes three logs inside its isolated run directory.
+Every sluice run writes three logs inside its isolated run directory.
 Slurm expands `%j` to the Slurm job ID, so the addresses are:
 
 ```text
@@ -572,7 +596,7 @@ heavyBuoyant: /home/shared/openfoam/heavyBuoyant/.foam-runs/<local-job-id>/slurm
 ```
 
 The same run directory also holds `log.blockMesh`, `log.decomposePar`,
-`processor*`, and `foam-clutch.sbatch` (the exact script Slurm executed —
+`processor*`, and `sluice.sbatch` (the exact script Slurm executed —
 resubmit it with `sbatch` to reproduce).
 
 You never need to paste IDs by hand. The `run` command prints all three
@@ -581,17 +605,17 @@ past job from the database:
 
 ```bash
 # stream the newest heavySimple job (no IDs typed):
-clutch logs --manifest /home/shared/openfoam/heavySimple/manifest.yaml --latest
+sluice logs --manifest /home/shared/openfoam/heavySimple/manifest.yaml --latest
 
 # stream the newest heavyBuoyant job:
-clutch logs --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml --latest
+sluice logs --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml --latest
 
 # stream one specific job:
-clutch logs --manifest /home/shared/openfoam/heavySimple/manifest.yaml --id <local-job-id>
+sluice logs --manifest /home/shared/openfoam/heavySimple/manifest.yaml --id <local-job-id>
 
 # plain tail -f with auto-resolved paths (no IDs typed):
-tail -f $(clutch logs --manifest /home/shared/openfoam/heavySimple/manifest.yaml --latest --follow=false)
-tail -f $(clutch logs --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml --latest --follow=false)
+tail -f $(sluice logs --manifest /home/shared/openfoam/heavySimple/manifest.yaml --latest --follow=false)
+tail -f $(sluice logs --manifest /home/shared/openfoam/heavyBuoyant/manifest.yaml --latest --follow=false)
 ```
 
 Other layouts for reference:
@@ -613,9 +637,9 @@ history, process listings, or shared logs.
 Start the local HTTP service:
 
 ```bash
-clutch serve \
+sluice serve \
   -addr :8080 \
-  -db foam-clutch.db
+  -db sluice.db
 ```
 
 Available endpoints:
@@ -636,7 +660,7 @@ curl http://localhost:8080/metrics
 curl http://localhost:8080/jobs
 ```
 
-Set `FOAM_CLUTCH_API_TOKEN` to require `Authorization: Bearer <token>` on
+Set `SLUICE_API_TOKEN` to require `Authorization: Bearer <token>` on
 `/jobs`. The HTTP service exposes health, metrics, and read-only job listing
 only. It does not expose anonymous job submission. Add authentication and
 authorization before putting it behind a shared network endpoint.
@@ -746,4 +770,4 @@ room for an `sbatch`/`squeue`/`sacct` adapter or another scheduler later.
 
 ## License
 
-Foam Clutch is available under the [Apache License 2.0](LICENSE).
+Sluice is available under the [Apache License 2.0](LICENSE).

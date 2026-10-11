@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ananymishradev/foam-clutch/internal/store"
+	"github.com/ananymishradev/sluice/internal/store"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
 )

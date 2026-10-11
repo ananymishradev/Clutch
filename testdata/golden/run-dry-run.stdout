@@ -14,7 +14,7 @@
 #SBATCH --output='<TEMP_PATH>/<CASE_HASH>'/slurm-%j.out
 #SBATCH --error='<TEMP_PATH>/<CASE_HASH>'/slurm-%j.err
 set -euo pipefail
-echo "=== foam-clutch job: pty-case ==="
+echo "=== sluice job: pty-case ==="
 echo "solver=simpleFoam ranks=1 wall=<TIMESTAMP> mesh=blockMesh launcher=mpirun fileHandler=collated"
 date; echo "nodelist: ${SLURM_NODELIST:-unknown} job: ${SLURM_JOB_ID:-unknown}"
 

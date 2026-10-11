@@ -9,11 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ananymishradev/foam-clutch/internal/doctor"
-	"github.com/ananymishradev/foam-clutch/internal/manifest"
-	"github.com/ananymishradev/foam-clutch/internal/preflight"
-	"github.com/ananymishradev/foam-clutch/internal/service"
-	"github.com/ananymishradev/foam-clutch/internal/ui"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/doctor"
+	"github.com/ananymishradev/sluice/internal/manifest"
+	"github.com/ananymishradev/sluice/internal/preflight"
+	"github.com/ananymishradev/sluice/internal/service"
+	"github.com/ananymishradev/sluice/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -25,14 +26,14 @@ type doctorConfig struct {
 }
 
 func newDoctorCommand() *cobra.Command {
-	cfg := doctorConfig{DB: "foam-clutch.db", Timeout: 5 * time.Second}
+	cfg := doctorConfig{DB: brand.DefaultDBFile, Timeout: 5 * time.Second}
 	cmd := &cobra.Command{
 		Use:   "doctor",
-		Short: "Diagnose the local Foam Clutch environment",
+		Short: "Diagnose the local " + brand.DisplayName + " environment",
 		Long:  "Check storage, Slurm, REST, JWT, and OpenFOAM prerequisites.",
-		Example: `  clutch doctor
-  clutch doctor --manifest manifest.yaml
-  clutch doctor --timeout 10s --output json`,
+		Example: "  " + brand.Name + " doctor\n" +
+			"  " + brand.Name + " doctor --manifest manifest.yaml\n" +
+			"  " + brand.Name + " doctor --timeout 10s --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runDoctor(cmd.Context(), cfg, cmd.OutOrStdout(), cmd.ErrOrStderr())
 		},

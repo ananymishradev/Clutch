@@ -10,7 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	slurmrest "github.com/ananymishradev/foam-clutch"
+	slurmrest "github.com/ananymishradev/sluice"
+	"github.com/ananymishradev/sluice/internal/brand"
 )
 
 // CliScheduler submits and polls via sbatch/squeue/scontrol/sacct/scancel.
@@ -42,7 +43,7 @@ func (c *CliScheduler) Submit(ctx context.Context, spec slurmrest.JobSpec) (int,
 	if err := os.MkdirAll(spec.Dir, 0o750); err != nil {
 		return 0, err
 	}
-	scriptPath := filepath.Join(spec.Dir, "foam-clutch.sbatch")
+	scriptPath := filepath.Join(spec.Dir, brand.RunScriptName)
 	if err := os.WriteFile(scriptPath, []byte(spec.Script), 0o750); err != nil {
 		return 0, fmt.Errorf("write batch script: %w", err)
 	}

@@ -6,6 +6,7 @@ import (
 	"io"
 	"runtime"
 
+	"github.com/ananymishradev/sluice/internal/brand"
 	"github.com/spf13/cobra"
 )
 
@@ -19,10 +20,10 @@ func newVersionCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print version information",
-		Long:  "Print the Foam Clutch version, commit, build date, and Go version.",
-		Example: `  clutch version
-  clutch version --output json
-  clutch version --no-color`,
+		Long:  "Print the " + brand.DisplayName + " version, commit, build date, and Go version.",
+		Example: "  " + brand.Name + " version\n" +
+			"  " + brand.Name + " version --output json\n" +
+			"  " + brand.Name + " version --no-color",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if output != "json" {
 				fmt.Fprint(cmd.ErrOrStderr(), bannerForCommand())
@@ -39,6 +40,6 @@ func runVersion(output string, stdout, stderr io.Writer) error {
 	if output == "json" {
 		return json.NewEncoder(stdout).Encode(info)
 	}
-	fmt.Fprintf(stderr, "clutch %s\ncommit: %s\nbuild date: %s\ngo: %s\n", Version, Commit, BuildDate, runtime.Version())
+	fmt.Fprintf(stderr, brand.Name+" %s\ncommit: %s\nbuild date: %s\ngo: %s\n", Version, Commit, BuildDate, runtime.Version())
 	return nil
 }

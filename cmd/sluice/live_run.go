@@ -13,14 +13,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ananymishradev/foam-clutch/internal/manifest"
-	"github.com/ananymishradev/foam-clutch/internal/preflight"
-	"github.com/ananymishradev/foam-clutch/internal/service"
-	"github.com/ananymishradev/foam-clutch/internal/store"
-	"github.com/ananymishradev/foam-clutch/internal/supervisor"
-	"github.com/ananymishradev/foam-clutch/internal/telemetry"
-	"github.com/ananymishradev/foam-clutch/internal/ui"
-	"github.com/ananymishradev/foam-clutch/internal/ui/runview"
+	"github.com/ananymishradev/sluice/internal/brand"
+	"github.com/ananymishradev/sluice/internal/manifest"
+	"github.com/ananymishradev/sluice/internal/preflight"
+	"github.com/ananymishradev/sluice/internal/service"
+	"github.com/ananymishradev/sluice/internal/store"
+	"github.com/ananymishradev/sluice/internal/supervisor"
+	"github.com/ananymishradev/sluice/internal/telemetry"
+	"github.com/ananymishradev/sluice/internal/ui"
+	"github.com/ananymishradev/sluice/internal/ui/runview"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/term"
@@ -161,7 +162,7 @@ func runLive(ctx context.Context, opts liveRunOptions) error {
 		}
 	}
 	if finalModel.Detached {
-		fmt.Fprintf(os.Stderr, "job still running · local %s · slurm %d\nstatus:  clutch status --id %s --refresh\ncancel:  clutch cancel --id %s\n", submitResult.ID, submitResult.SlurmID, submitResult.ID, submitResult.ID)
+		fmt.Fprintf(os.Stderr, "job still running · local %s · slurm %d\nstatus:  "+brand.Name+" status --id %s --refresh\ncancel:  "+brand.Name+" cancel --id %s\n", submitResult.ID, submitResult.SlurmID, submitResult.ID, submitResult.ID)
 		return nil
 	}
 	if submitErr != nil {

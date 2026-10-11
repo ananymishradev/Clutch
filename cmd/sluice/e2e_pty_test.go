@@ -18,21 +18,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ananymishradev/foam-clutch/internal/store"
+	"github.com/ananymishradev/sluice/internal/store"
 	"github.com/creack/pty"
 )
 
-var clutchBinary string
+var sluiceBinary string
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "foam-clutch-e2e-")
+	dir, err := os.MkdirTemp("", "sluice-e2e-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
 	defer os.RemoveAll(dir)
-	clutchBinary = filepath.Join(dir, "clutch")
-	cmd := exec.Command("go", "build", "-o", clutchBinary, ".")
+	sluiceBinary = filepath.Join(dir, "sluice")
+	cmd := exec.Command("go", "build", "-o", sluiceBinary, ".")
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		os.Exit(2)
@@ -59,7 +59,7 @@ func startPTY(t *testing.T, args []string, extraEnv map[string]string) *ptySessi
 	if err := os.WriteFile(filepath.Join(fakeState, "state"), []byte("RUNNING\n"), 0o640); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(clutchBinary, args...)
+	cmd := exec.Command(sluiceBinary, args...)
 	env := filteredEnv()
 	env = append(env,
 		"TERM=xterm-256color",
@@ -201,7 +201,7 @@ func writeCaseManifest(t *testing.T) (root, manifest, db string) {
 		}
 	}
 	manifest = filepath.Join(root, "m.yaml")
-	content := fmt.Sprintf(`apiVersion: foam-clutch/v1alpha1
+	content := fmt.Sprintf(`apiVersion: sluice/v1alpha1
 name: pty-case
 case:
   path: %s
@@ -309,7 +309,7 @@ func TestPTY_DetachWithCtrlCAndQ(t *testing.T) {
 				t.Fatalf("exit code %d; output=%q", code, s.Output())
 			}
 			out := s.plain()
-			if !strings.Contains(out, "clutch status --id "+id+" --refresh") || !strings.Contains(out, "clutch cancel --id "+id) {
+			if !strings.Contains(out, "sluice status --id "+id+" --refresh") || !strings.Contains(out, "sluice cancel --id "+id) {
 				t.Fatalf("detach notice missing: %s", out)
 			}
 			if b, err := os.ReadFile(filepath.Join(fakeDirFromOutput(t, s), "scancel.log")); err == nil && len(bytes.TrimSpace(b)) != 0 {
@@ -324,7 +324,7 @@ func TestPTY_DetachWithCtrlCAndQ(t *testing.T) {
 			if err != nil || (job.State != "QUEUED" && job.State != "RUNNING") {
 				t.Fatalf("job was not left active: %#v err=%v", job, err)
 			}
-			status := exec.Command(clutchBinary, "status", "--db", db, "--id", id, "--refresh", "--backend", "cli")
+			status := exec.Command(sluiceBinary, "status", "--db", db, "--id", id, "--refresh", "--backend", "cli")
 			status.Env = append(filteredEnv(),
 				"TERM=dumb",
 				"FAKESLURM_DIR="+fakeDirFromOutput(t, s),
@@ -349,7 +349,7 @@ func TestPTY_SIGTERMDetaches(t *testing.T) {
 		t.Fatal(err)
 	}
 	code, _ := s.Wait(5 * time.Second)
-	if code != 0 || !strings.Contains(s.plain(), "clutch status --id "+id+" --refresh") {
+	if code != 0 || !strings.Contains(s.plain(), "sluice status --id "+id+" --refresh") {
 		t.Fatalf("SIGTERM did not detach cleanly: code=%d output=%q", code, s.Output())
 	}
 }

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ananymishradev/foam-clutch/internal/preflight"
-	"github.com/ananymishradev/foam-clutch/internal/store"
-	"github.com/ananymishradev/foam-clutch/internal/telemetry"
+	"github.com/ananymishradev/sluice/internal/preflight"
+	"github.com/ananymishradev/sluice/internal/store"
+	"github.com/ananymishradev/sluice/internal/telemetry"
 )
 
 // No solver name is hard-coded: foamRun with any physics model
@@ -43,7 +43,7 @@ func TestGenericSolvers(t *testing.T) {
 			caseDir := filepath.Join(root, "case")
 			writeCase(t, caseDir, tc.controlDict, "2", true)
 			mp := filepath.Join(root, "manifest.yaml")
-			yml := "apiVersion: foam-clutch/v1alpha1\nname: test\ncase:\n  path: ./case\n" +
+			yml := "apiVersion: sluice/v1alpha1\nname: test\ncase:\n  path: ./case\n" +
 				"resources:\n  nodes: 1\n  tasksPerNode: 2\n  timeLimitMinutes: 5\n" +
 				"solver:\n  name: " + tc.solver + "\n  checkpointSeconds: 60\n" +
 				"storage:\n  cacheDir: ./cache\n  runDir: ./runs\n"
@@ -72,7 +72,7 @@ func TestControlDictMismatchFailsFast(t *testing.T) {
 	caseDir := filepath.Join(root, "case")
 	writeCase(t, caseDir, "application simpleFoam;\nrunTimeModifiable true;\n", "1", true)
 	mp := filepath.Join(root, "manifest.yaml")
-	yml := "apiVersion: foam-clutch/v1alpha1\nname: test\ncase:\n  path: ./case\n" +
+	yml := "apiVersion: sluice/v1alpha1\nname: test\ncase:\n  path: ./case\n" +
 		"resources:\n  nodes: 1\n  tasksPerNode: 1\n  timeLimitMinutes: 5\n" +
 		"solver:\n  name: pimpleFoam\nstorage:\n  cacheDir: ./cache\n  runDir: ./runs\n"
 	if err := os.WriteFile(mp, []byte(yml), 0o640); err != nil {
@@ -89,7 +89,7 @@ func TestCheckpointRequiresRunTimeModifiable(t *testing.T) {
 	caseDir := filepath.Join(root, "case")
 	writeCase(t, caseDir, "application simpleFoam;\n", "1", true)
 	mp := filepath.Join(root, "manifest.yaml")
-	yml := "apiVersion: foam-clutch/v1alpha1\nname: test\ncase:\n  path: ./case\n" +
+	yml := "apiVersion: sluice/v1alpha1\nname: test\ncase:\n  path: ./case\n" +
 		"resources:\n  nodes: 1\n  tasksPerNode: 1\n  timeLimitMinutes: 30\n" +
 		"solver:\n  name: simpleFoam\n  checkpointSeconds: 60\n" +
 		"storage:\n  cacheDir: ./cache\n  runDir: ./runs\n"
@@ -107,7 +107,7 @@ func TestSerialRunSkipsDecompose(t *testing.T) {
 	caseDir := filepath.Join(root, "case")
 	writeCase(t, caseDir, "application simpleFoam;\n", "", true)
 	mp := filepath.Join(root, "manifest.yaml")
-	yml := "apiVersion: foam-clutch/v1alpha1\nname: test\ncase:\n  path: ./case\n" +
+	yml := "apiVersion: sluice/v1alpha1\nname: test\ncase:\n  path: ./case\n" +
 		"resources:\n  nodes: 1\n  tasksPerNode: 1\n  timeLimitMinutes: 5\n" +
 		"solver:\n  name: simpleFoam\nstorage:\n  cacheDir: ./cache\n  runDir: ./runs\n"
 	if err := os.WriteFile(mp, []byte(yml), 0o640); err != nil {
@@ -136,7 +136,7 @@ func TestSrunAndFileHandlerNone(t *testing.T) {
 	caseDir := filepath.Join(root, "case")
 	writeCase(t, caseDir, "application simpleFoam;\n", "2", true)
 	mp := filepath.Join(root, "manifest.yaml")
-	yml := "apiVersion: foam-clutch/v1alpha1\nname: test\ncase:\n  path: ./case\n" +
+	yml := "apiVersion: sluice/v1alpha1\nname: test\ncase:\n  path: ./case\n" +
 		"resources:\n  nodes: 1\n  tasksPerNode: 2\n  timeLimitMinutes: 5\n" +
 		"solver:\n  name: simpleFoam\n  fileHandler: none\n" +
 		"runtime:\n  mpi:\n    launcher: srun\n    flavour: pmix\n" +
@@ -167,7 +167,7 @@ func TestCheckpointZeroDisablesSignal(t *testing.T) {
 	caseDir := filepath.Join(root, "case")
 	writeCase(t, caseDir, "application simpleFoam;\n", "2", true)
 	mp := filepath.Join(root, "manifest.yaml")
-	yml := "apiVersion: foam-clutch/v1alpha1\nname: test\ncase:\n  path: ./case\n" +
+	yml := "apiVersion: sluice/v1alpha1\nname: test\ncase:\n  path: ./case\n" +
 		"resources:\n  nodes: 1\n  tasksPerNode: 2\n  timeLimitMinutes: 5\n" +
 		"solver:\n  name: simpleFoam\n  checkpointSeconds: 0\n" +
 		"storage:\n  cacheDir: ./cache\n  runDir: ./runs\n"

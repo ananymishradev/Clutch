@@ -15,4 +15,4 @@ error: command failed
 
   doctor found environment failures
 
-  hint: run `clutch --help` to see available commands
+  hint: run `sluice --help` to see available commands
