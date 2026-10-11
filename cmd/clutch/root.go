@@ -2,22 +2,14 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 
-	"github.com/ananymishradev/foam-clutch/internal/doctor"
-	"github.com/ananymishradev/foam-clutch/internal/manifest"
-	"github.com/ananymishradev/foam-clutch/internal/preflight"
 	"github.com/ananymishradev/foam-clutch/internal/service"
-	"github.com/ananymishradev/foam-clutch/internal/store"
 	"github.com/ananymishradev/foam-clutch/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -48,6 +40,9 @@ var legacyFlags = map[string]bool{
 	"manifest": true, "db": true, "backend": true, "tail": true, "watch": true,
 	"latest": true, "id": true, "slurm": true, "state": true, "refresh": true,
 	"follow": true, "interval": true, "timeout": true, "addr": true,
+	"output": true, "yes": true, "limit": true, "solver": true, "case": true,
+	"name": true, "partition": true, "nodes": true, "tasks": true, "time": true,
+	"checkpoint": true, "no-color": true,
 }
 
 type exitError struct {
@@ -79,8 +74,13 @@ func rewriteLegacyArgs(args []string) []string {
 	for i := 1; i < len(out); i++ {
 		if strings.HasPrefix(out[i], "-") && !strings.HasPrefix(out[i], "--") {
 			name := strings.TrimPrefix(out[i], "-")
+			suffix := ""
+			if key, value, ok := strings.Cut(name, "="); ok {
+				name = key
+				suffix = "=" + value
+			}
 			if legacyFlags[name] {
-				out[i] = "--" + name
+				out[i] = "--" + name + suffix
 				changed = true
 			}
 		}
@@ -117,30 +117,18 @@ func newRoot() *cobra.Command {
 	})
 
 	root.AddCommand(
-		passthrough("validate", validate),
-		passthrough("submit", submit),
-		passthrough("watch", watch),
-		passthrough("status", status),
-		passthrough("cancel", cancel),
-		passthrough("logs", logs),
-		passthrough("serve", serve),
+		newValidateCommand(),
+		newSubmitCommand(),
+		newWatchCommand(),
+		newStatusCommand(),
+		newCancelCommand(),
+		newLogsCommand(),
+		newServeCommand(),
 		newRunCommand(),
 		newListCommand(),
 		newDoctorCommand(),
-		&cobra.Command{Use: "init", DisableFlagParsing: true, RunE: func(cmd *cobra.Command, args []string) error {
-			t := ui.Detect(noColor)
-			if t.TTY {
-				fmt.Fprint(os.Stderr, ui.Banner(Version, t.Color))
-			}
-			return initManifest(args)
-		}},
-		&cobra.Command{Use: "version", Run: func(cmd *cobra.Command, args []string) {
-			t := ui.Detect(noColor)
-			if t.TTY {
-				fmt.Fprint(os.Stderr, ui.Banner(Version, t.Color))
-			}
-			fmt.Printf("clutch %s\n", Version)
-		}},
+		newInitCommand(),
+		newVersionCommand(),
 	)
 	return root
 }
@@ -165,131 +153,4 @@ func newRunCommand() *cobra.Command {
 			return run(ctx, args)
 		},
 	}
-}
-
-func newListCommand() *cobra.Command {
-	return &cobra.Command{
-		Use: "list", DisableFlagParsing: true,
-		RunE: func(cmd *cobra.Command, args []string) error { return listCommand(args) },
-	}
-}
-
-func listCommand(args []string) error {
-	fs := flag.NewFlagSet("list", flag.ContinueOnError)
-	fs.SetOutput(os.Stderr)
-	fs.StringVar(&outputFormat, "o", outputFormat, "output format: table or json")
-	fs.StringVar(&outputFormat, "output", outputFormat, "output format: table or json")
-	dbPath := fs.String("db", "foam-clutch.db", "SQLite database path")
-	state := fs.String("state", "", "filter by state")
-	limit := fs.Int("limit", 50, "maximum number of jobs")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	st, err := store.Open(*dbPath)
-	if err != nil {
-		return err
-	}
-	defer st.Close()
-	jobs, err := st.ListByState(context.Background(), strings.ToUpper(strings.TrimSpace(*state)))
-	if err != nil {
-		return err
-	}
-	if *limit >= 0 && len(jobs) > *limit {
-		jobs = jobs[:*limit]
-	}
-	if strings.EqualFold(outputFormat, "json") {
-		rows := make([]map[string]any, 0, len(jobs))
-		for _, j := range jobs {
-			rows = append(rows, ui.JobJSON(j))
-		}
-		return json.NewEncoder(os.Stdout).Encode(rows)
-	}
-	t := ui.Detect(noColor)
-	if len(jobs) == 0 {
-		fmt.Fprintln(os.Stderr, "No jobs yet. Try: clutch run --manifest manifest.yaml")
-		return nil
-	}
-	ui.JobsTable(os.Stderr, jobs, t.Color)
-	return nil
-}
-
-func newDoctorCommand() *cobra.Command {
-	return &cobra.Command{
-		Use: "doctor", DisableFlagParsing: true,
-		RunE: func(cmd *cobra.Command, args []string) error { return doctorCommand(args) },
-	}
-}
-
-func doctorCommand(args []string) error {
-	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
-	fs.SetOutput(os.Stderr)
-	fs.StringVar(&outputFormat, "o", outputFormat, "output format: table or json")
-	fs.StringVar(&outputFormat, "output", outputFormat, "output format: table or json")
-	timeout := fs.Duration("timeout", 5*time.Second, "per-check timeout")
-	dbPath := fs.String("db", "foam-clutch.db", "SQLite database path")
-	manifestPath := fs.String("manifest", "", "optional manifest to validate")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	cacheDir := filepath.Join(filepath.Dir(*dbPath), ".foam-cache")
-	runDir := filepath.Join(filepath.Dir(*dbPath), ".foam-runs")
-	checkpointSeconds := 0
-	foamBashrc := ""
-	if strings.TrimSpace(*manifestPath) != "" {
-		m, err := manifest.Load(*manifestPath)
-		if err == nil {
-			cacheDir, runDir = m.Storage.CacheDir, m.Storage.RunDir
-			if cacheDir == "" {
-				cacheDir = filepath.Join(filepath.Dir(*manifestPath), ".foam-cache")
-			}
-			if runDir == "" {
-				runDir = filepath.Join(filepath.Dir(*manifestPath), ".foam-runs")
-			}
-			checkpointSeconds = m.Solver.CheckpointSeconds
-			foamBashrc = m.Runtime.FoamBashrc
-		}
-	}
-	checks := doctor.DefaultChecksFor(*dbPath, cacheDir, runDir, checkpointSeconds, foamBashrc)
-	if strings.TrimSpace(*manifestPath) != "" {
-		checks = append(checks, caseDoctorCheck{manifestPath: *manifestPath})
-	}
-	results := doctor.Runner{Timeout: *timeout, Checks: checks}.Run(context.Background())
-	if strings.EqualFold(outputFormat, "json") {
-		return json.NewEncoder(os.Stdout).Encode(results)
-	}
-	t := ui.Detect(noColor)
-	counts := map[doctor.Status]int{}
-	for _, result := range results {
-		counts[result.Status]++
-		symbol := ui.SymbolsFor(t).OK
-		switch result.Status {
-		case doctor.WARN:
-			symbol = ui.SymbolsFor(t).Warn
-		case doctor.FAIL:
-			symbol = ui.SymbolsFor(t).Fail
-		case doctor.SKIP:
-			symbol = ui.SymbolsFor(t).Skip
-		}
-		fmt.Fprintf(os.Stderr, "%s %-18s %s\n", symbol, result.Name, result.Detail)
-		if result.Hint != "" {
-			fmt.Fprintf(os.Stderr, "  hint: %s\n", result.Hint)
-		}
-	}
-	fmt.Fprintf(os.Stderr, "\n%d passed · %d warning · %d failed\n", counts[doctor.OK], counts[doctor.WARN], counts[doctor.FAIL])
-	if counts[doctor.FAIL] > 0 {
-		return exitError{code: exitEnvironment, err: fmt.Errorf("doctor found environment failures")}
-	}
-	return nil
-}
-
-type caseDoctorCheck struct{ manifestPath string }
-
-func (caseDoctorCheck) Name() string { return "Case" }
-func (c caseDoctorCheck) Run(ctx context.Context) doctor.Result {
-	s := service.Service{Preflight: preflight.Runner{}}
-	m, _, err := s.Validate(ctx, c.manifestPath)
-	if err != nil {
-		return doctor.Result{Category: "Case", Name: "Case", Status: doctor.FAIL, Detail: err.Error(), Hint: "fix the manifest or preflight findings before submitting"}
-	}
-	return doctor.Result{Category: "Case", Name: "Case", Status: doctor.OK, Detail: fmt.Sprintf("%s is valid", m.Name)}
 }

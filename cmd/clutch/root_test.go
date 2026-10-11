@@ -28,3 +28,11 @@ func TestRewriteLeavesValuesAndShortFlagsAlone(t *testing.T) {
 		t.Fatalf("rewriteLegacyArgs() = %#v, want %#v", got, want)
 	}
 }
+
+func TestRewriteBooleanValues(t *testing.T) {
+	got := rewriteLegacyArgs([]string{"clutch", "logs", "-follow=false", "-latest", "-refresh=false"})
+	want := []string{"clutch", "logs", "--follow=false", "--latest", "--refresh=false"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("rewriteLegacyArgs() = %#v, want %#v", got, want)
+	}
+}
