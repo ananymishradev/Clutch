@@ -1,15 +1,15 @@
-# Sluice (formerly Foam Clutch)
+# Sluice
 
-Run OpenFOAM cases on Slurm without repeating the same setup every time.
-
-Sluice is not a scheduler; Slurm still decides when and where jobs run.
+Run OpenFOAM cases on HPC servers
 
 Sluice is a small Go tool that sits between your OpenFOAM case and the
 Slurm scheduler. It checks the case before submitting it, keeps a reproducible
 cached copy, gives each run its own working directory, records job state in
 SQLite, and follows the job until it finishes.
 
-OpenFOAM still runs the simulation and Slurm still owns scheduling. Sluice
+Sluice is not a scheduler; Slurm still decides when and where jobs run.
+
+OpenFOAM still runs the simulation and job scheduler still owns scheduling. Sluice
 just connects the two and keeps the workflow repeatable without hiding the
 cluster details you may need to troubleshoot a run.
 
@@ -169,28 +169,6 @@ go run ./cmd/sluice run --manifest /path/to/manifest.yaml
 ```
 
 The commands in the rest of this guide assume `sluice` is on your `PATH`.
-
-## Migrating from Foam Clutch
-
-Sluice is a pure rename of Foam Clutch (`clutch` binary). No behavior changed
-except the names below. `.foam-cache/` and `.foam-runs/` keep their names.
-
-- Binary: `sluice` replaces `clutch`. The `it` alias for `run` stays. No
-  `clutch` shim is provided; the installer only prints a notice if it finds
-  an old copy.
-- Manifest `apiVersion`: new canonical `sluice/v1alpha1`. `sluice init`
-  writes the new value. `foam-clutch/v1alpha1` is still accepted with a
-  one-line deprecation warning on stderr.
-- Env vars: new `SLUICE_*` names (e.g. `SLUICE_API_TOKEN`) with fallback to
-  `FOAM_CLUTCH_*`. If both are set, the new one wins. A warning prints once
-  per process when only the old name is used. Values are never logged.
-- DB file: new default `sluice.db`. If `<manifest-dir>/foam-clutch.db`
-  exists and `sluice.db` does not, the old file is used with a one-time
-  notice. User data is never moved, renamed, copied, or deleted automatically.
-- Run script: new runs write `sluice.sbatch`; existing run directories are
-  untouched.
-- Metrics: `foam_clutch_*` became `sluice_*` with no dual emission. Update
-  dashboards and alerts (see CHANGELOG.md).
 
 ## Run a case
 

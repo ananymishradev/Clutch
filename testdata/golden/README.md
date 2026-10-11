@@ -25,19 +25,13 @@ whitespace are normalized. Run the generator twice with the same
 
 ## Post-rename transform
 
-After the Foam Clutch to Sluice rename, `testdata/golden/rename.sh`
-transforms these baseline files in place (the baseline itself is never
-regenerated from the new code). Rules, longest tokens first:
-
-1. `foam-clutch/v1alpha1` -> `sluice/v1alpha1` (manifest apiVersion)
-2. `foam-clutch.sbatch` -> `sluice.sbatch` (per-run script; no-op in the
-   current goldens because run paths are normalized to `<TEMP_PATH>`)
-3. `foam-clutch.db` -> `sluice.db` (default DB file; no-op for the same
-   normalization reason)
-4. `foam-clutch job:` -> `sluice job:` (rendered batch echo)
-5. `clutch run backend=` -> `sluice run backend=` (plain run log prefix)
-6. `run \`clutch --help\`` -> `run \`sluice --help\`` (structured error hint)
-7. `Try: clutch run` -> `Try: sluice run` (list-empty hint)
+`testdata/golden/rename.sh` transforms these baseline files in place
+(the baseline itself is never regenerated from the new code). Rules,
+longest tokens first, map legacy identifiers to the current `sluice`
+forms: manifest apiVersion, sbatch file name, DB file name, rendered
+job echo, run log prefix, structured error hint, and list-empty hint.
+See `rename.sh` for the exact expressions (rules 2 and 3 are no-ops
+in the current goldens because run paths normalize to `<TEMP_PATH>`).
 
 Every changed line in `git diff testdata/golden/` is explained by one of
 these rules. A test failure not explained by them is a behavior change:
