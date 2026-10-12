@@ -6,12 +6,12 @@
 [![build status](https://github.com/ananymishradev/sluice/actions/workflows/go.yaml/badge.svg)](https://github.com/ananymishradev/sluice/actions/workflows/go.yaml)
 [![Releases](https://img.shields.io/github/v/release/ananymishradev/sluice)](https://github.com/ananymishradev/sluice/releases/latest)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ananymishradev/sluice/badge)](https://scorecard.dev/viewer/?uri=github.com/ananymishradev/sluice)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ananymishradev/sluice)](https://goreportcard.com/report/github.com/ananymishradev/sluice)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/ananymishradev/sluice)](go.mod)
 
 # Sluice
 
-**Find out your case is broken before the queue does.**
+**Run OpenFOAM cases on cluster of CPUs and find out your broken case before the queue does**
+
 </div>
 Sluice is a small Go tool that sits between OpenFOAM and Slurm. It checks a
 case before submission, caches it, gives each run its own directory, tracks the
